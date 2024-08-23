@@ -9,8 +9,14 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 # qt_standard_project_setup()
 set(CMAKE_AUTOMOC ON)
 
+
 qt_add_executable(JsonRPC
-    main.cpp
+main.cpp
 )
+set_target_properties(JsonRPC PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+add_subdirectory(Server)
+target_link_libraries(JsonRPC PRIVATE Server)
+
 
 target_link_libraries(JsonRPC PRIVATE Qt6::Widgets)

@@ -1,11 +1,12 @@
 #include <QLabel>
-#include <QApplication>
+#include <QCoreApplication>
+#include "server.h"
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    QLabel *label = new QLabel("Hello world ssh!");
-    label->show();
+    WebServer server(12345);
+
+    QCoreApplication a(argc, argv);
 
     return a.exec();
 }
