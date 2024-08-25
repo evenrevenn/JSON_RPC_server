@@ -17,17 +17,22 @@
     #include <unistd.h>
     #include <errno.h>
     #include <sys/select.h>
+    #include <poll.h>
 #endif
 
 #ifdef _WIN32
     #define CLOSE_SOCKET(s) closesocket(s)
     #define GET_SOCKET_ERRNO() (WSAGetLastError())
     #define IS_VALID_SOCKET(s) ((s) != INVALID_SOCKET)
+    #define POLL(fdarray, fds, timeout) WSAPoll(fdarray, fds, timeout)
+    #define POLL_FD LPWSAPOLLFD
 #else
     #define SOCKET int
     #define CLOSE_SOCKET(s) close(s)
     #define GET_SOCKET_ERRNO() (errno)
     #define IS_VALID_SOCKET(s) ((s) >= 0)
+    #define POLL(fds, nfds, timeout) poll(fds, nfds, timeout)
+    #define POLL_FD pollfd
 #endif
 
 #define MAX_DATA_BUFFER_SIZE 2048
