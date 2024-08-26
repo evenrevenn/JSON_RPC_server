@@ -12,11 +12,20 @@ namespace CleanUtils{
     };
 }
 
+class WebServer;
+template <typename T>
+concept isWebServer = std::is_base_of<WebServer, T>::value;
+
 class WebServer
 {
 public:
     explicit WebServer(int port);
     ~WebServer();
+
+    /* Collect all server sockets fds in fd_set and poll 
+     * them in another thread for incoming connections */
+    template <isWebServer ...Server>
+    static void startListenForClients(Server & ...servers);
 
 private:
     SOCKET server_socket_;

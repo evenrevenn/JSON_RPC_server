@@ -4,7 +4,9 @@
 
 int main(int argc, char *argv[])
 {
-    WebServer server(12345);
+    WebServer server1(12345);
+    WebServer server2(12346);
+    WebServer::startListenForClients(server1, server2);
 
     QCoreApplication a(argc, argv);
 

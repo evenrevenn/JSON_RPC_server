@@ -4,6 +4,10 @@
 #include <memory>
 #include <iostream>
 #include <fcntl.h>
+#include <vector>
+#include <atomic>
+
+enum {MAX_CLIENTS = 5};
 
 WebServer::WebServer(int port)
 {
@@ -50,20 +54,82 @@ WebServer::WebServer(int port)
         std::printf("Can't bind to address, errno = %d\n", GET_SOCKET_ERRNO());
     }
 
-    listen(server_socket_, 5);
+    // listen(server_socket_, MAX_CLIENTS);
 
-    socket_ptr client(new SOCKET);
-    *client = accept(server_socket_, NULL, NULL);
+    // socket_ptr client(new SOCKET);
+    // *client = accept(server_socket_, NULL, NULL);
 
-    std::printf("Accepted\n");
+    // std::printf("Accepted\n");
 
-    send(*client, test_htmls::test_html, sizeof(test_htmls::test_html), 0);
+    // send(*client, test_htmls::test_html, sizeof(test_htmls::test_html), 0);
 
-    while(1);
+    // while(1);
 }
 
 WebServer::~WebServer()
 {
     client_sockets_.clear();
     CLOSE_SOCKET(server_socket_);
+}
+
+namespace{
+
+/** Static variables moved to translation unit scope instead of WebServer::startListenForClients
+ * because of multiple possible template realizations */
+
+/* All listening server sockets */
+static std::vector<POLL_FD> s_listening_sockets;
+
+/* Listeners thread stopper, transition is performed upwards */
+enum class ListenState{
+    Stopped,
+    Going,
+    StopRequested,
+};
+static std::atomic<ListenState> s_listen_state = ListenState::Stopped;
+
+void addServerToListeners(SOCKET server_sock)
+{    
+    /* For possible multithread listeners addition */
+    static std::mutex listen_lock;
+    std::lock_guard(listen_lock);
+
+    if (std::find_if(s_listening_sockets.begin()\
+        ,s_listening_sockets.end()\
+        , [server_sock](POLL_FD &fd){return fd.fd == server_sock;})\
+        == s_listening_sockets.end())
+    {
+        return;
+    }
+
+    s_listening_sockets.push_back(POLL_FD{.fd = server_sock, .events = POLLIN});
+    listen(server_sock, MAX_CLIENTS);
+}
+
+/* Thread function, polls all servers socket fds for new connections */
+void serversListeningLoop()
+{
+    while(s_listen_state == ListenState::Going)
+    {
+        int ret = POLL(s_listening_sockets.data(), s_listening_sockets.size(), 100);
+        if (ret < 0){
+            std::cout << "Server poll error" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        else if(ret > 0){
+            
+        }
+    }
+    s_listen_state = ListenState::Stopped;
+}
+
+}
+
+template <isWebServer ...Server>
+void WebServer::startListenForClients(Server &... server)
+{
+    addServerToListeners(server.server_sock...);
+    if (s_listen_state == ListenState::Going){
+        s_listen_state
+    }
 }
