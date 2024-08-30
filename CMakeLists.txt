@@ -12,11 +12,12 @@ set(CMAKE_AUTOMOC ON)
 
 qt_add_executable(JsonRPC
 main.cpp
+json_rpc_server.cpp
 )
 set_target_properties(JsonRPC PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_subdirectory(Server)
-target_link_libraries(JsonRPC PRIVATE Server)
+add_subdirectory(ServersCore)
+target_link_libraries(JsonRPC PRIVATE ServersCore)
 
 
 target_link_libraries(JsonRPC PRIVATE Qt6::Widgets)

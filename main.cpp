@@ -1,17 +1,16 @@
 #include <QLabel>
 #include <QCoreApplication>
-#include "server.h"
 #include "servers_wrapper.h"
+#include "json_rpc_server.h"
 
 int main(int argc, char *argv[])
 {
-    WebServer server1(12345);
-    WebServer server2(12346);
-    WebServer server3(12347);
+    JsonRPCServer server1(12345);
+    JsonRPCServer server2(12346);
+    JsonRPCServer server3(12347);
     
     ServersWrapper &wrapper = ServersWrapper::getInstance();
     wrapper.addServer(server1, server2, server3);
-    wrapper.addServer(server1);
 
     wrapper.startListenLoop();
 

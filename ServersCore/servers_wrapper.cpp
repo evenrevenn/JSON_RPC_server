@@ -3,7 +3,6 @@
 
 void ServersWrapper::startListenLoop()
 {
-    std::stop_token stopper;
     if (!loop_handle_.joinable()){
         loop_handle_ = std::jthread(&ServersWrapper::serversListeningLoop);
     } else {

@@ -7,10 +7,10 @@
 #include <thread>
 #include <iostream>
 
+/* Singletone wrapper that contains all server sockets fds and associated client sockets fds */
 class ServersWrapper
 {
 public:
-    enum {MAX_SERVERS = 3};
     static ServersWrapper &getInstance(){static ServersWrapper wrapper; return wrapper;}
 
     // ~ServersWrapper();
@@ -26,17 +26,16 @@ public:
     void addOneServer(Server_t & server);
 
 private:
-    explicit ServersWrapper(){/*servers_.reserve(MAX_SERVERS);*/};
+    explicit ServersWrapper(){};
 
     /* Thread function, polls all servers socket fds for new connections */
     static void serversListeningLoop(std::stop_token stopper);
 
-    typedef std::vector<CleanUtils::autoClosedSocketFd> SocketFdsArray;
-    SocketFdsArray servers_;
+    CleanUtils::SocketFdsArray servers_;
     std::mutex servers_lock_;
     std::jthread loop_handle_;
 
-    std::map<std::reference_wrapper<WebServer>, SocketFdsArray> clients_map_;
+    std::map<std::reference_wrapper<WebServer>, CleanUtils::SocketFdsArray> clients_map_;
 };
 #endif //SERVERS_WRAPPER_H
 
@@ -54,8 +53,7 @@ inline void ServersWrapper::addOneServer(Server_t &server)
     }
 
     servers_.emplace_back(POLL_FD{.fd = server_sock, .events = POLLIN});
-    int clients_num = Server_t::MAX_CLIENTS;
-    if(listen(server_sock, clients_num)){
+    if(listen(server_sock, Server_t::MAX_CLIENTS)){
         std::printf("Can't listen on socket, errno %d\n", GET_SOCKET_ERRNO());
         exit(EXIT_FAILURE);
     }
@@ -64,4 +62,5 @@ inline void ServersWrapper::addOneServer(Server_t &server)
     if (new_vec.second){
         new_vec.first->second.reserve(Server_t::MAX_CLIENTS);
     }
+    server.startListeningLoop(new_vec.first->second);
 }
