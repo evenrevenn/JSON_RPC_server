@@ -4,6 +4,7 @@
 #include <atomic>
 #include <array>
 #include <QString>
+#include <string>
 
 /* Instance of buffer */
 template <unsigned int buf_size>
@@ -13,25 +14,63 @@ public:
     enum {buffer_size = buf_size};
     ~httpRecvBufferSingle(){busy_flag = false;}
 
-    operator void*(){return buffer.toLocal8Bit().data() + buffer.toLocal8Bit().length();}
-    operator QString&(){return buffer;}
-    operator bool(){return busy_flag;}
+    httpRecvBufferSingle(httpRecvBufferSingle &&other):busy_flag(other.busy_flag),buffer(other.buffer){}
+
+    ssize_t requestBodyLength() const
+    {
+        const char *http_end = "\r\n\r\n";
+        const char *body_start = std::strstr(buffer, http_end);
+        return body_start ? strlen(body_start) : -1;
+    }
+    QByteArray requestBody() const
+    {
+        const char *http_end = "\r\n\r\n";
+        const char *body_start = std::strstr(buffer, http_end);
+        return body_start ? QByteArray::fromRawData(body_start + 4, strlen(body_start + 4)) : QByteArray();
+    }
+
+    operator void*(){return buffer + strnlen(buffer, buf_size);}
+    operator QString() const{return QString::fromRawData((QChar *)buffer, buf_size);} // No deep copy here
+    operator QByteArray() const{return QByteArray::fromRawData(buffer, buf_size);} // No deep copy here
+    operator bool() const{return busy_flag;}
 
 template <unsigned int N, unsigned int buf_size_pool>
 friend class httpRecvBuffers;
 
 private:
-    httpRecvBufferSingle(std::atomic<bool> &flag, QString &buffer):busy_flag(flag),buffer(buffer){}
+    httpRecvBufferSingle(std::atomic<bool> &flag, char *buffer):busy_flag(flag),buffer(buffer){}
     std::atomic<bool> &busy_flag;
-    QString &buffer;
+    char *buffer;
 };
 
-/* QString-based buffers pool, each one gets acquired with object-lifetime-based exclusive token */
+/* Buffers pool, acess to each one gets acquired with lifetime-based exclusive token */
 template <unsigned int N, unsigned int buf_size>
 class httpRecvBuffers
 {
 public:
-    httpRecvBuffers():busy_flags{false}{for(auto &buffer : buffers){buffer.reserve(buf_size);}}
+    /* Allocating memory for buffers and assigning QString to each one */
+    httpRecvBuffers():
+    busy_flags{false}
+    {
+        for(int i = 0; i < N; i++){
+            mem_pool[i] = new char[buf_size];
+        }
+    }
+
+    /* Waiting for every buffer to get released */
+    ~httpRecvBuffers()
+    {
+        while(true)
+        {
+            for(int i = 0; i < N; i++)
+            {
+                if (busy_flags[i] == false){
+                    busy_flags[i] = true;
+                    delete[] mem_pool[i];
+                }
+            }
+        }
+    }
 
     /* Getting personal buffer from buffers pool */
     [[nodiscard]] httpRecvBufferSingle<buf_size> getBuffer()
@@ -41,8 +80,8 @@ public:
             {
                 if (busy_flags[i] == false){
                     busy_flags[i] = true;
-                    buffers[i].clear();
-                    return {busy_flags[i], buffers[i]};
+                    memset(mem_pool[i], 0, buf_size);
+                    return {busy_flags[i], mem_pool[i]};
                 }
             }
         }
@@ -50,7 +89,7 @@ public:
 
 private:
     std::array<std::atomic<bool>, N> busy_flags;
-    std::array<QString, N> buffers;
+    char *mem_pool[N];
 };
 
 #endif //HTTP_RECV_BUFFERS_H
