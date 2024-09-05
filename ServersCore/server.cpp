@@ -34,6 +34,16 @@ WebServer::WebServer(int port)
     }
 #endif
 
+    const int opt_val = 1;
+    if (setsockopt(server_socket_, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(int)) < 0){
+        std::printf("Can't set socket reuse addr, errno %d\n", GET_SOCKET_ERRNO());
+        exit(EXIT_FAILURE);
+    }
+    if (setsockopt(server_socket_, SOL_SOCKET, SO_REUSEPORT, &opt_val, sizeof(int)) < 0){
+        std::printf("Can't set socket reuse port, errno %d\n", GET_SOCKET_ERRNO());
+        exit(EXIT_FAILURE);
+    }
+
     sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -50,6 +60,7 @@ WebServer::WebServer(int port)
     }
     else{
         std::printf("Can't bind to address, errno = %d\n", GET_SOCKET_ERRNO());
+        exit(EXIT_FAILURE);
     }
 }
 

@@ -3,3 +3,4 @@ add_library(ServersCore STATIC
     servers_wrapper.cpp
 )
 target_include_directories(ServersCore INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(ServersCore PRIVATE ${CMAKE_SOURCE_DIR}/tests)

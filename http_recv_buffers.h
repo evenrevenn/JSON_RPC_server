@@ -20,7 +20,7 @@ public:
     {
         const char *http_end = "\r\n\r\n";
         const char *body_start = std::strstr(buffer, http_end);
-        return body_start ? strlen(body_start) : -1;
+        return body_start ? strlen(body_start + 4) : -1;
     }
     QByteArray requestBody() const
     {
@@ -30,7 +30,7 @@ public:
     }
 
     operator void*(){return buffer + strnlen(buffer, buf_size);}
-    operator QString() const{return QString::fromRawData((QChar *)buffer, buf_size);} // No deep copy here
+    operator QString() const{return QString::fromLocal8Bit(buffer, strnlen(buffer, buf_size));} // Deep copy
     operator QByteArray() const{return QByteArray::fromRawData(buffer, buf_size);} // No deep copy here
     operator bool() const{return busy_flag;}
 

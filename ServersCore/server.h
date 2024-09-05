@@ -31,7 +31,7 @@ namespace CleanUtils{
         autoClosedSocketFd(POLL_FD &&other) noexcept
         {fd = std::move(other.fd); events = std::move(other.events);}
         
-        ~autoClosedSocketFd(){std::printf("Destructor %d addr: 0x%p\n", fd, this); CLOSE_SOCKET(fd);}
+        ~autoClosedSocketFd(){/*std::printf("Destructor %d addr: 0x%p\n", fd, this);*/ CLOSE_SOCKET(fd);}
         friend bool operator== (const autoClosedSocketFd &rhs, const autoClosedSocketFd &lhs)
         {return rhs.fd == lhs.fd;}
     };
