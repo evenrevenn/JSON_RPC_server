@@ -1,6 +1,6 @@
 {
     "files.associations": {
-        "memory": "cpp",
+        "*.tpp": "cpp",
         "array": "cpp",
         "atomic": "cpp",
         "bit": "cpp",
@@ -25,6 +25,7 @@
         "deque": "cpp",
         "list": "cpp",
         "map": "cpp",
+        "set": "cpp",
         "string": "cpp",
         "unordered_map": "cpp",
         "vector": "cpp",
@@ -32,6 +33,7 @@
         "algorithm": "cpp",
         "functional": "cpp",
         "iterator": "cpp",
+        "memory": "cpp",
         "memory_resource": "cpp",
         "numeric": "cpp",
         "optional": "cpp",
@@ -60,7 +62,6 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp",
-        "set": "cpp"
+        "variant": "cpp"
     }
 }

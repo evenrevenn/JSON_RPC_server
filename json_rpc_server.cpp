@@ -3,9 +3,10 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
-JsonRPCServer::JsonRPCServer(int port, QObject *parent):
+JsonRPCServer::JsonRPCServer(int port, QObject *target_root_obj, QObject *parent):
 QObject(parent),
-WebServer(port)
+WebServer(port),
+root_object(target_root_obj)
 {
 }
 
@@ -61,8 +62,18 @@ void JsonRPCServer::processRequest(const SOCKET client)
                 if (method == "POST"){
                     reg_match = RegularExpressions::http_json_POST.match(buffer);
                     QString length;
-                    if (reg_match.hasMatch() && !(length = reg_match.captured("http_length")).isEmpty()){
-                        return receiveMessageBodyPOST(std::move(buffer), length.toInt(), std::move(client_ptr));
+                    if (reg_match.hasMatch() && !(length = reg_match.captured("http_length")).isEmpty())
+                    {
+                        QStringList target_path = reg_match.captured("http_URI").split('/', Qt::SkipEmptyParts);
+                        QObject *target_obj = root_object;
+                        for (auto &step : target_path){
+                            target_obj = target_obj->findChild<QObject *>(step, Qt::FindDirectChildrenOnly);
+                            if (!target_obj){
+                                return sendJsonResponseError(0, ObjectNotFound, std::move(client_ptr));
+                            }
+                        }
+
+                        return receiveMessageBodyPOST(target_obj, std::move(buffer), length.toInt(), std::move(client_ptr));
                     }
                 }
                 else if (method == "GET"){
@@ -71,7 +82,7 @@ void JsonRPCServer::processRequest(const SOCKET client)
             }
         }
 
-        ret = poll(client_ptr.get(), 1, 10000);
+        ret = poll(client_ptr.get(), 1, WAIT_TIMEOUT_MS);
         if (ret == 1){
             if (client_ptr->revents & POLLHUP){
                 std::printf("Client closed connection\n");
@@ -93,7 +104,7 @@ void JsonRPCServer::processRequest(const SOCKET client)
 }
 
 
-void JsonRPCServer::processRequestPOST(const QByteArray &req_body, CleanUtils::socket_ptr &&client)
+void JsonRPCServer::processRequestPOST(QObject *target, const QByteArray &req_body, CleanUtils::socket_ptr &&client)
 {
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(req_body, &error);
@@ -101,24 +112,63 @@ void JsonRPCServer::processRequestPOST(const QByteArray &req_body, CleanUtils::s
         return sendJsonResponseError(0, ParseError, std::move(client));
     }
     
-    QJsonObject root_obj = doc.object();
-    QJsonArray root_arr = doc.array();
-    if (checkWithMsg(root_obj.isEmpty() && root_arr.isEmpty(), "Json parse error, can't find root object or array\n")){
+    QJsonObject root_obj;
+    QJsonArray root_arr;
+
+    if (checkWithMsg(doc.isObject() && doc.isArray(), "Json parse error, can't find root object or array\n")){
         return sendJsonResponseError(0, ParseError, std::move(client));
+    }
+
+    if (doc.isObject()){
+        root_obj = doc.object();
     }
 
     QJsonValue val;
     val = root_obj["jsonrpc"];
-    // if ((root_obj, "Json parse error, can't find root object\n")){
-    //     return;
-    // }
+    if (val.isUndefined() || val.toString() != "2.0"){
+        std::printf("JsonRPC error, invalid \"jsonrpc\" field\n");
+        return sendJsonResponseError(0, InternalError, std::move(client));
+    }
+
+    int id = 0;
+    val = root_obj["id"];
+    if (!val.isUndefined()){
+        if (!val.isDouble()){
+            std::printf("JsonRPC error, invalid \"id\" field\n");
+            return sendJsonResponseError(0, InternalError, std::move(client));
+        }
+        else if (val.toInteger() == 0){
+            std::printf("JsonRPC error, \"id\" field equals zero\n");
+            return sendJsonResponseError(0, NullIDError, std::move(client));
+        }
+        else{
+            id = val.toInteger();
+        }
+    }
+
+    val = root_obj["method"];
+    if (checkWithMsg(!val.isString(), "JsonRPC error, invalid \"method\" field\n")){
+        return sendJsonResponseError(0, InvalidRequest, std::move(client));
+    }
+    QByteArray method = val.toString().toLocal8Bit();
+    JsonRPCParams_t params = root_obj["params"].toObject().toVariantMap();
+
+    JsonRPCRet_t return_val{"", NoError};
+
+    bool result = QMetaObject::invokeMethod(target, method.data(), Qt::BlockingQueuedConnection
+                                            ,Q_RETURN_ARG(JsonRPCServer::JsonRPCRet_t, return_val)
+                                            ,Q_ARG(JsonRPCServer::JsonRPCParams_t, params));
+    if (!result){
+        return sendJsonResponseError(id, MethodNotFound, std::move(client));
+    }
+    if (return_val.second != NoError){
+        return sendJsonResponseError(id, return_val.second, std::move(client));
+    }
+
+    return sendJsonResponseValid(id, return_val.first, std::move(client));
 }
 
 void JsonRPCServer::processRequestGET(QByteArray &&req_body, CleanUtils::socket_ptr &&client)
-{
-}
-
-void JsonRPCServer::sendJsonResponseValid(int id, const std::string &result, CleanUtils::socket_ptr &&client)
 {
 }
 
@@ -140,6 +190,10 @@ constexpr const char* errCodeToStr(JsonRPCServer::JsonRPCErrorCodes code)
         return "Invalid params";
     case InternalError:
         return "Internal error";
+    case NullIDError:
+        return "ID is 0";
+    case ObjectNotFound:
+        return "Object not found";
     }
 
     return "";
@@ -155,15 +209,85 @@ constexpr int errCodeToHTTPCode(JsonRPCServer::JsonRPCErrorCodes code)
     case InvalidRequest:
         return 400;
     case MethodNotFound:
+    case ObjectNotFound:
         return 404;
     case ParseError:
     case InvalidParams:
     case InternalError:
+    case NullIDError:
         return 500;
     }
     return 500;
 }
 }
+
+void JsonRPCServer::sendJsonResponseValid(int id, const QString &result, CleanUtils::socket_ptr &&client)
+{
+    /* Notification */
+    if (id == 0){
+        return;
+    }
+    
+    static constexpr char format[] =\
+    R"({"jsonrpc": "2.0", "result": "%s", "id": "%s"})";
+
+    std::string id_s = std::to_string(id);
+
+    enum{SEND_BUF_SIZE = 4096};
+    std::unique_ptr<char []> send_buffer_uniq(new char[SEND_BUF_SIZE]);
+    char *send_buffer = send_buffer_uniq.get();
+    memset(send_buffer, 0, SEND_BUF_SIZE);
+
+    QByteArray result_b = result.toLocal8Bit();
+    /* Calculate json body formatted length */
+    ssize_t json_len = std::snprintf(nullptr, 0, format, result_b.constData(), id_s.c_str());
+    if (checkWithMsg(json_len < 0 || json_len == SEND_BUF_SIZE, "Insufficient send buffer\n")){
+        return;
+    }
+    /* Populating buffer with http_head at the beginning */
+    ssize_t http_len = std::snprintf(send_buffer, SEND_BUF_SIZE - json_len, HTTPTemplates::json_post_response_fmt\
+    ,errCodeToHTTPCode(NoError)\
+    ,errCodeToStr(NoError)\
+    ,json_len);
+
+    if (checkWithMsg(http_len < 0 || http_len == SEND_BUF_SIZE - json_len, "Insufficient send buffer\n")){
+        return;
+    }
+    json_len = std::snprintf(send_buffer + http_len, SEND_BUF_SIZE, format, result_b.constData(), id_s.data());
+
+    client->events = POLLOUT;
+    ssize_t sent = 0;
+    ssize_t ret = 0;
+    
+    while (sent < json_len + http_len)
+    {
+        ret = poll(client.get(), 1, WAIT_TIMEOUT_MS);
+        if (ret == 1){
+            if (checkWithMsg(client->revents & POLLHUP, "Client closed connection\n")){
+                return;
+            }
+            if (client->revents & POLLOUT){
+                ret = send(client->fd, send_buffer + sent, json_len + http_len - sent, 0);
+                if (int err = GET_SOCKET_ERRNO(); checkWithMsg(ret < 0 && err != EAGAIN, "Send failed, errno %d", err)){
+                    return;
+                }
+                else if (checkWithMsg(ret == 0, "Send timed out, closing connection\n")){
+                    return;
+                }
+                else{
+                    sent += ret;
+                }
+            }
+        }
+        else if (checkWithMsg(ret == 0, "Client send timeout\n")){
+            return;
+        }
+        else if (checkWithMsg(ret < 0, "Client send poll error, errno %d\n", GET_SOCKET_ERRNO())){
+            return;
+        }
+    }
+}
+
 
 void JsonRPCServer::sendJsonResponseError(int id, JsonRPCErrorCodes error_code, CleanUtils::socket_ptr &&client)
 {
@@ -174,25 +298,25 @@ void JsonRPCServer::sendJsonResponseError(int id, JsonRPCErrorCodes error_code, 
     id_s = id ? std::to_string(id) : "null";
 
     enum{SEND_BUF_SIZE = 2048};
-    char *send_buffer = new char[SEND_BUF_SIZE];
+    std::unique_ptr<char []> send_buffer_uniq(new char[SEND_BUF_SIZE]);
+    char *send_buffer = send_buffer_uniq.get();
     memset(send_buffer, 0, SEND_BUF_SIZE);
 
-    /* Ugly workaround for continious memory footprint */
-    int http_head_offset = sizeof(HTTPTemplates::json_post_response_fmt) + 50;
-    
-    /* Populating buffer with json content first, leave 50 bytes extra space for formatting characters */
-    size_t json_len = std::snprintf(send_buffer + http_head_offset, SEND_BUF_SIZE - http_head_offset, format, error_code, errCodeToStr(error_code), id_s.data());
-    if (checkWithMsg(json_len < 0 && json_len < SEND_BUF_SIZE - http_head_offset, "Insufficient send buffer\n")){
+    /* Calculate json body formatted length */
+    ssize_t json_len = std::snprintf(nullptr, 0, format, error_code, errCodeToStr(error_code), id_s.data());
+    if (checkWithMsg(json_len < 0 || json_len == SEND_BUF_SIZE, "Insufficient send buffer\n")){
         return;
     }
-
     /* Populating buffer with http_head at the beginning */
-    size_t http_len = std::snprintf(send_buffer, http_head_offset, HTTPTemplates::json_post_response_fmt\
+    ssize_t http_len = std::snprintf(send_buffer, SEND_BUF_SIZE - json_len, HTTPTemplates::json_post_response_fmt\
     ,errCodeToHTTPCode(error_code)\
     ,errCodeToStr(error_code)\
     ,json_len);
-    /* Moving http_head to the json body */
-    memmove(send_buffer + http_head_offset - http_len, send_buffer, http_len);
+
+    if (checkWithMsg(http_len < 0 || http_len == SEND_BUF_SIZE- json_len, "Insufficient send buffer\n")){
+        return;
+    }
+    json_len = std::snprintf(send_buffer + http_len, SEND_BUF_SIZE, format, error_code, errCodeToStr(error_code), id_s.data());
 
     client->events = POLLOUT;
     ssize_t sent = 0;
@@ -200,13 +324,13 @@ void JsonRPCServer::sendJsonResponseError(int id, JsonRPCErrorCodes error_code, 
     
     while (sent < json_len + http_len)
     {
-        ret = poll(client.get(), 1, 10000);
+        ret = poll(client.get(), 1, WAIT_TIMEOUT_MS);
         if (ret == 1){
             if (checkWithMsg(client->revents & POLLHUP, "Client closed connection\n")){
                 return;
             }
             if (client->revents & POLLOUT){
-                ret = send(client->fd, send_buffer + http_head_offset - http_len + sent, json_len + http_len - sent, 0);
+                ret = send(client->fd, send_buffer + sent, json_len + http_len - sent, 0);
                 if (int err = GET_SOCKET_ERRNO(); checkWithMsg(ret < 0 && err != EAGAIN, "Send failed, errno %d", err)){
                     return;
                 }

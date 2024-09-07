@@ -1,7 +1,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include "../common.h"
+#include "common.h"
 #include <vector>
 #include <memory>
 #include <iostream>
@@ -19,7 +19,7 @@ namespace CleanUtils{
     /* RAII poll fd wrapper, calls close() on socket fd on destruction */
     struct autoClosedSocketFd : public POLL_FD{
         autoClosedSocketFd(const POLL_FD &other) noexcept
-        {fd = other.fd; events = other.events;}
+        :POLL_FD(other){}
         
         autoClosedSocketFd(autoClosedSocketFd &&other) noexcept
         {fd = std::move(other.fd); events = std::move(other.events); other.fd = -1;}
@@ -29,7 +29,7 @@ namespace CleanUtils{
         other.fd = -1; return *this;}
 
         autoClosedSocketFd(POLL_FD &&other) noexcept
-        {fd = std::move(other.fd); events = std::move(other.events);}
+        :POLL_FD(other){}
         
         ~autoClosedSocketFd(){/*std::printf("Destructor %d addr: 0x%p\n", fd, this);*/ CLOSE_SOCKET(fd);}
         friend bool operator== (const autoClosedSocketFd &rhs, const autoClosedSocketFd &lhs)
@@ -48,7 +48,7 @@ class WebServer
 public:
     explicit WebServer(int port);
     ~WebServer();
-    enum {MAX_CLIENTS = 5};
+    enum {MAX_CLIENTS = 5, WAIT_TIMEOUT_MS = 5000};
 
     friend bool operator< (const WebServer &lhs, const WebServer &rhs){
         return lhs.server_socket_ < rhs.server_socket_;

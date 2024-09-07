@@ -41,29 +41,41 @@ public:
         InvalidRequest = -32600,
         MethodNotFound = -32601,
         InvalidParams = -32602,
-        InternalError = -32603
+        InternalError = -32603,
+        NullIDError = -31000,
+        ObjectNotFound = -31001
     };
-    explicit JsonRPCServer(int port, QObject *parent = nullptr);
+
+    /** MetaProgramming helper types, that need to be used in target QObject class */
+    /** When adding jsonrpc fucntionality use signature : Q_INVOKABLE JsonRPCRet_t <method>(JsonRPCParams_t) */
+    /* Type of return value */
+    typedef std::pair<QString,JsonRPCServer::JsonRPCErrorCodes> JsonRPCRet_t;
+    /* Type of method parameters holder structure */
+    typedef const QVariantMap & JsonRPCParams_t;
+
+    explicit JsonRPCServer(int port, QObject *target_root_obj, QObject *parent = nullptr);
 
 protected:
     void processRequest(const SOCKET client) override;
 
 private:
     template<unsigned int buf_size>
-    void receiveMessageBodyPOST(httpRecvBufferSingle<buf_size> &&buffer, const int length, CleanUtils::socket_ptr &&client);
+    void receiveMessageBodyPOST(QObject *target, httpRecvBufferSingle<buf_size> &&buffer, const int length, CleanUtils::socket_ptr &&client);
 
-    void processRequestPOST(const QByteArray &req_body, CleanUtils::socket_ptr &&client);
+    void processRequestPOST(QObject *target, const QByteArray &req_body, CleanUtils::socket_ptr &&client);
     void processRequestGET(QByteArray &&req_body, CleanUtils::socket_ptr &&client);
 
-    void sendJsonResponseValid(int id, const std::string &result, CleanUtils::socket_ptr &&client);
+    void sendJsonResponseValid(int id, const QString &result, CleanUtils::socket_ptr &&client);
     void sendJsonResponseError(int id, JsonRPCErrorCodes error_code, CleanUtils::socket_ptr &&client);
     void sendResponseValidArray();
 
     httpRecvBuffers<MAX_CLIENTS, 2048> http_buffers_;
+
+    QObject *root_object;
 };
 
 template<unsigned int buf_size>
-inline void JsonRPCServer::receiveMessageBodyPOST(httpRecvBufferSingle<buf_size>&& buffer, const int length, CleanUtils::socket_ptr && client)
+inline void JsonRPCServer::receiveMessageBodyPOST(QObject *target, httpRecvBufferSingle<buf_size>&& buffer, const int length, CleanUtils::socket_ptr && client)
 {
     ssize_t recv_length = buffer.requestBodyLength();
     if (recv_length < 0){
@@ -73,7 +85,23 @@ inline void JsonRPCServer::receiveMessageBodyPOST(httpRecvBufferSingle<buf_size>
 
     while(recv_length < length)
     {
-        ssize_t ret = recv(client->fd, buffer, length - recv_length, 0);
+        ssize_t ret = poll(client.get(), 1, WAIT_TIMEOUT_MS);
+        if (ret == 1){
+            if (client->revents & POLLHUP){
+                std::printf("Client closed connection\n");
+                return;
+            }
+        }
+        else if (ret == 0){
+            std::printf("Client receive timeout\n");
+            return;
+        }
+        else if (ret < 0){
+            std::printf("Client receive poll error, errno %d\n", GET_SOCKET_ERRNO());
+            return;
+        }
+
+        ret = recv(client->fd, buffer, length - recv_length, 0);
         if (ret < 0){
             auto err = GET_SOCKET_ERRNO();
             if (err != EWOULDBLOCK || err != EAGAIN){
@@ -88,27 +116,9 @@ inline void JsonRPCServer::receiveMessageBodyPOST(httpRecvBufferSingle<buf_size>
         else{
             recv_length += ret;
         }
-        ret = poll(client.get(), 1, 10000);
-        if (ret == 1){
-            if (client->revents & POLLHUP){
-                std::printf("Client closed connection\n");
-                return;
-            }
-            if (client->revents & POLLIN){
-                continue;
-            }
-        }
-        else if (ret == 0){
-            std::printf("Client receive timeout\n");
-            return;
-        }
-        else if (ret < 0){
-            std::printf("Client receive poll error, errno %d\n", GET_SOCKET_ERRNO());
-            return;
-        }
     }
 
-    processRequestPOST(buffer.requestBody(), std::move(client));
+    processRequestPOST(target, buffer.requestBody(), std::move(client));
 }
 
 #endif //JSON_RPC_SERVER_H

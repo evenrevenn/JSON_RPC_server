@@ -1,8 +1,8 @@
 POST / HTTP/1.1
 HOST: Test
 Content-Type: application/json-rpc 2.0
-Content-Length: 70
+Content-Length: 66
 Accept: application/json-rpc 2.0
 Connection: close
 
-{"json-rpc": "2.0", "method": "sum", "params": ["a":3, "b":4}, "id":0}
+{"jsonrpc": "2.0", "method": "", "params": {"a":3, "b":4}, "id":1}

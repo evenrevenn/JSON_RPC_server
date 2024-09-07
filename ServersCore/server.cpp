@@ -34,7 +34,7 @@ WebServer::WebServer(int port)
     }
 #endif
 
-    const int opt_val = 1;
+    int opt_val = 1;
     if (setsockopt(server_socket_, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(int)) < 0){
         std::printf("Can't set socket reuse addr, errno %d\n", GET_SOCKET_ERRNO());
         exit(EXIT_FAILURE);
