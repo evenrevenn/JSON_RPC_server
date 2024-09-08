@@ -109,6 +109,7 @@ void JsonRPCServer::processRequestPOST(QObject *target, const QByteArray &req_bo
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(req_body, &error);
     if (checkWithMsg(doc.isNull(), "Json parse error: %s\n", error.errorString().toLocal8Bit().data())){
+        qDebug() << req_body;
         return sendJsonResponseError(0, ParseError, std::move(client));
     }
     
@@ -132,7 +133,7 @@ void JsonRPCServer::processRequestPOST(QObject *target, const QByteArray &req_bo
 
     int id = 0;
     val = root_obj["id"];
-    if (!val.isUndefined()){
+    if (!val.isNull()){
         if (!val.isDouble()){
             std::printf("JsonRPC error, invalid \"id\" field\n");
             return sendJsonResponseError(0, InternalError, std::move(client));

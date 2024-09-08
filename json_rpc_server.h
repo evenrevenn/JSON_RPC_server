@@ -77,7 +77,7 @@ private:
 template<unsigned int buf_size>
 inline void JsonRPCServer::receiveMessageBodyPOST(QObject *target, httpRecvBufferSingle<buf_size>&& buffer, const int length, CleanUtils::socket_ptr && client)
 {
-    ssize_t recv_length = buffer.requestBodyLength();
+    ssize_t recv_length = buffer.receivedContentLength();
     if (recv_length < 0){
         std::printf("Error finding body length\n");
         return;
@@ -118,7 +118,7 @@ inline void JsonRPCServer::receiveMessageBodyPOST(QObject *target, httpRecvBuffe
         }
     }
 
-    processRequestPOST(target, buffer.requestBody(), std::move(client));
+    processRequestPOST(target, buffer.requestBody(length), std::move(client));
 }
 
 #endif //JSON_RPC_SERVER_H

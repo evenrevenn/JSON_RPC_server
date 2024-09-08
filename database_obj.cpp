@@ -36,7 +36,7 @@ Q_INVOKABLE Ret_t DatabaseObj::addProperty(Params_t params)
 
     this->setProperty(name.c_str(), prop_val);
     
-    return Ret_t(QString("Property %1 type %2 added").arg(QString::fromStdString(name), QString::fromStdString(type_str)), NoError);
+    return Ret_t(QString("Property <%1> type <%2> added").arg(QString::fromStdString(name), QString::fromStdString(type_str)), NoError);
 }
 
 Q_INVOKABLE Ret_t DatabaseObj::deleteProperty(Params_t params)
@@ -51,12 +51,12 @@ Q_INVOKABLE Ret_t DatabaseObj::deleteProperty(Params_t params)
 
     this->setProperty(name.c_str(), QVariant());
     
-    return Ret_t(QString("Property %1 deleted").arg(QString::fromStdString(name)), NoError);
+    return Ret_t(QString("Property <%1> deleted").arg(QString::fromStdString(name)), NoError);
 }
 
 Q_INVOKABLE Ret_t DatabaseObj::listProperties(Params_t params)
 {
-    const QString format("%1, type: %2\n");
+    const QString format("Property <%1>, type: <%2>");
     QString ret = "";
 
     auto names = dynamicPropertyNames();

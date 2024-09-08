@@ -1,0 +1,8 @@
+POST / HTTP/1.1
+HOST: Test
+Content-Type: application/json-rpc 2.0
+Content-Length: 82
+Accept: application/json-rpc 2.0
+Connection: close
+
+{"jsonrpc": "2.0", "method": "deleteProperty", "params": {"name":"test"}, "id": 3}

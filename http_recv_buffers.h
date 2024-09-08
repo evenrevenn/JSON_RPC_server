@@ -16,17 +16,17 @@ public:
 
     httpRecvBufferSingle(httpRecvBufferSingle &&other):busy_flag(other.busy_flag),buffer(other.buffer){}
 
-    ssize_t requestBodyLength() const
+    ssize_t receivedContentLength() const
     {
         const char *http_end = "\r\n\r\n";
         const char *body_start = std::strstr(buffer, http_end);
         return body_start ? strlen(body_start + 4) : -1;
     }
-    QByteArray requestBody() const
+    QByteArray requestBody(ssize_t length) const
     {
         const char *http_end = "\r\n\r\n";
         const char *body_start = std::strstr(buffer, http_end);
-        return body_start ? QByteArray::fromRawData(body_start + 4, strlen(body_start + 4)) : QByteArray();
+        return body_start ? QByteArray::fromRawData(body_start + 4, length) : QByteArray();
     }
 
     operator void*(){return buffer + strnlen(buffer, buf_size);}

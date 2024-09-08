@@ -1,20 +1,27 @@
 import socket
 import os
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('127.0.0.1', 12345))
+def try_json(host_addr, filename : str):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(host_addr)
+    with open(filename, 'rb') as o:
+        try:
+            s.sendfile(o)
+        except:
+            print('Error sending file', OSError())
+    print("File sent successfully")
 
-with open('POST_request_correct.txt', 'rb') as o:
     try:
-        s.sendfile(o)
+        response = s.recv(2048)
+    except TimeoutError:
+        print('Timeout receiving responce')
     except:
-        print('Error sending file', OSError())
-print("File sent successfully")
+        print('Error receiving response', OSError())
+    print('Response: ',response.decode('utf-8'),'\n')
+    s.close()
 
-try:
-    response = s.recv(1024)
-except TimeoutError:
-    print('Timeout receiving responce')
-except:
-    print('Error receiving response', OSError())
-print('Response: ',response.decode('utf-8'))
+
+try_json(('192.168.1.108', 12345), 'POST_request_addProperty.txt')
+try_json(('192.168.1.108', 12345), 'POST_request_listProperties.txt')
+try_json(('192.168.1.108', 12345), 'POST_request_deleteProperty.txt')
+try_json(('192.168.1.108', 12345), 'POST_request_listProperties.txt')
