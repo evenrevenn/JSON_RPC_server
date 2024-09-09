@@ -18,6 +18,7 @@
     #include <errno.h>
     #include <sys/select.h>
     #include <poll.h>
+    #include <sys/stat.h>
 #endif
 
 #ifdef _WIN32

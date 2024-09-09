@@ -20,5 +20,8 @@ set_target_properties(JsonRPC PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY
 add_subdirectory(ServersCore)
 target_link_libraries(JsonRPC PRIVATE ServersCore)
 
-
 target_link_libraries(JsonRPC PRIVATE Qt6::Widgets)
+
+set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install)
+install(TARGETS JsonRPC RUNTIME DESTINATION "bin")
+install(DIRECTORY "DatabaseRoot" DESTINATION "bin")

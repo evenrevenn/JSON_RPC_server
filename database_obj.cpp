@@ -1,9 +1,7 @@
-#ifndef DATABASE_OBJ_CPP
-#define DATABASE_OBJ_CPP
-
 #include "database_obj.h"
 #include <QMetaType>
 #include <QVariant>
+#include <QEvent>
 
 using Ret_t = JsonRPCServer::JsonRPCRet_t;
 using Params_t = JsonRPCServer::JsonRPCParams_t;
@@ -97,4 +95,84 @@ bool DatabaseObj::extractParamStr(const Params_t &&params, const QString &key, s
     return true;
 }
 
-#endif //DATABASE_OBJ_CPP
+DatabaseObj::DatabaseObj(const QString &name, QObject *parent):QObject(parent)
+{
+    setObjectName(name);
+
+    QStringList path;
+    path.append(name);
+
+    QObject *next = parent;
+
+    /* Upward run to root */
+    while (next && next->parent()){
+        path.prepend(next->objectName());
+        next = next->parent();
+    }
+    QByteArray full_path = path.join('/').toLocal8Bit();
+
+#ifdef WIN_32
+    /* TODO: add windows mkdir */
+#else
+    struct stat st = {0};
+    if (stat(full_path.constData(), &st) == -1){
+        mkdir(full_path.constData(), 0777);
+    }
+#endif
+    QByteArray full_path_ping = full_path;
+    QByteArray full_path_pong = full_path;
+    full_path_ping.append("page0.html");
+    full_path_pong.append("page1.html");
+    
+    html_ping_pong_[0].f_out = CleanUtils::autoCloseFileOutPtr(fopen(full_path_ping.constData(), "r"));
+    html_ping_pong_[0].f_in = CleanUtils::autoCloseFileInPtr(new QFile());
+    html_ping_pong_[0].f_in->open(html_ping_pong_[0].f_out.get(), QIODeviceBase::Truncate, QFileDevice::AutoCloseHandle);
+    
+    html_ping_pong_[1].f_out = CleanUtils::autoCloseFileOutPtr(fopen(full_path_pong.constData(), "r"));
+    html_ping_pong_[1].f_in = CleanUtils::autoCloseFileInPtr(new QFile());
+    html_ping_pong_[1].f_in->open(html_ping_pong_[1].f_out.get(), QIODeviceBase::Truncate, QFileDevice::AutoCloseHandle);
+}
+
+bool DatabaseObj::event(QEvent *event)
+{
+    if (event->type() == QEvent::DynamicPropertyChange){
+        refreshHtml();
+        return true;
+    }
+
+    return false;
+}
+
+void DatabaseObj::refreshHtml()
+{
+    std::lock_guard<std::mutex> lock(ping_pong_lock_);
+
+    StatesPair state = std::atomic_load(&ping_pong_state_);
+    /* Modifying invalid page */
+    htmlFileIO &page = state.first ? html_ping_pong_[0] : html_ping_pong_[1];
+    
+    /* Blocks if any clients still read from invalidated earlier page */
+    while(page.semaphores.try_acquire());
+
+    /* Clearing file */
+    page.f_in->close();
+    page.f_in->open(page.f_out.get(), QIODeviceBase::Truncate, QFileDevice::AutoCloseHandle);
+
+    QDataStream filestream(page.f_in.get());
+    
+    filestream 
+    << "<!DOCTYPE html>\n"
+    << "<html>\n"
+    << "<body>\n";
+
+    for (const QByteArray &name : this->dynamicPropertyNames()){
+        filestream << this->property(name);
+    }
+
+    filestream 
+    << "</body>\n"
+    << "</html>\n";
+
+    state.flip();
+    std::atomic_store(&ping_pong_state_, state);
+}
