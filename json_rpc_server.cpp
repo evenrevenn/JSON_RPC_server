@@ -3,8 +3,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
-JsonRPCServer::JsonRPCServer(int port, QObject *target_root_obj, QObject *parent):
-QObject(parent),
+JsonRPCServer::JsonRPCServer(int port, QObject *target_root_obj):
 WebServer(port),
 root_object(target_root_obj)
 {
@@ -31,7 +30,6 @@ void JsonRPCServer::processRequest(const SOCKET client)
 {
     auto buffer = http_buffers_.getBuffer();
     CleanUtils::socket_ptr client_ptr(new POLL_FD{.fd = client, .events = POLLIN});
-    std::cout << "Processing request" << std::endl;
 
     ssize_t received = 0;
     ssize_t ret = 0;

@@ -13,6 +13,7 @@ qt_add_executable(JsonRPC
 main.cpp
 json_rpc_server.cpp
 database_obj.cpp
+html_server.cpp
 )
 set_target_properties(JsonRPC PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 

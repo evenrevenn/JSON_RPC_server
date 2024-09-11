@@ -66,6 +66,10 @@ protected:
 private:
     void startListeningLoop(CleanUtils::SocketFdsArray &clients_fds);
     void clientsListeningLoop(std::stop_token stopper, CleanUtils::SocketFdsArray &clients_fds);
+    void processReqThreadF(const SOCKET client){
+        std::printf("Processing request\n");
+        try{ processRequest(client); }
+        catch(std::runtime_error &e){ std::cerr << "Error while processing: " << e.what() << std::endl; } }
 
     SOCKET server_socket_;
 

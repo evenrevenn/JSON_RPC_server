@@ -2,6 +2,7 @@
 #include <QMetaType>
 #include <QVariant>
 #include <QEvent>
+#include <semaphore>
 
 using Ret_t = JsonRPCServer::JsonRPCRet_t;
 using Params_t = JsonRPCServer::JsonRPCParams_t;
@@ -33,6 +34,8 @@ Q_INVOKABLE Ret_t DatabaseObj::addProperty(Params_t params)
     }
 
     this->setProperty(name.c_str(), prop_val);
+
+    notifyRefresh();
     
     return Ret_t(QString("Property <%1> type <%2> added").arg(QString::fromStdString(name), QString::fromStdString(type_str)), NoError);
 }
@@ -48,6 +51,8 @@ Q_INVOKABLE Ret_t DatabaseObj::deleteProperty(Params_t params)
     }
 
     this->setProperty(name.c_str(), QVariant());
+
+    notifyRefresh();
     
     return Ret_t(QString("Property <%1> deleted").arg(QString::fromStdString(name)), NoError);
 }
@@ -95,7 +100,9 @@ bool DatabaseObj::extractParamStr(const Params_t &&params, const QString &key, s
     return true;
 }
 
-DatabaseObj::DatabaseObj(const QString &name, QObject *parent):QObject(parent)
+DatabaseObj::DatabaseObj(const QString &name, QObject *parent):
+QObject(parent),
+refresh_semaphore_(0)
 {
     setObjectName(name);
 
@@ -116,30 +123,43 @@ DatabaseObj::DatabaseObj(const QString &name, QObject *parent):QObject(parent)
     full_path_ping.append("/page0.html");
     full_path_pong.append("/page1.html");
     
-    html_ping_pong_[0].f_in = CleanUtils::autoCloseFileInPtr(new QFile(full_path_ping));
-    html_ping_pong_[0].f_in->open(QIODeviceBase::WriteOnly | QIODeviceBase::Truncate);
 
-    auto f = fopen(full_path_ping.constData(), "rb");
-    if (!f){
+    html_ping_pong_[0].f_in = CleanUtils::autoCloseFileInPtr(new QFile(full_path_ping));
+    html_ping_pong_[0].f_in->open(QIODeviceBase::WriteOnly);
+    html_ping_pong_[0].f_in->close();
+    
+    if (!CleanUtils::autoCloseFileOutPtr(std::fopen(full_path_ping.constData(), "rb"))){
         std::printf("Error opening html file %s\n", full_path_ping.constData());
         exit(EXIT_FAILURE);
     }
-    html_ping_pong_[0].f_out = CleanUtils::autoCloseFileOutPtr(f);
     
 
     html_ping_pong_[1].f_in = CleanUtils::autoCloseFileInPtr(new QFile(full_path_pong));
-    html_ping_pong_[1].f_in->open(QIODeviceBase::WriteOnly | QIODeviceBase::Truncate);
+    html_ping_pong_[1].f_in->open(QIODeviceBase::WriteOnly);
+    html_ping_pong_[1].f_in->close();
 
-    f = fopen(full_path_pong.constData(), "rb");
-    if (!f){
+    if (!CleanUtils::autoCloseFileOutPtr(std::fopen(full_path_pong.constData(), "rb"))){
         std::printf("Error opening html file %s\n", full_path_pong.constData());
         exit(EXIT_FAILURE);
     }
-    html_ping_pong_[1].f_out = CleanUtils::autoCloseFileOutPtr(fopen(full_path_pong.constData(), "r"));
+
+    refresh_thread_ = std::jthread(&DatabaseObj::refreshLoop, this);
+}
+
+void DatabaseObj::refreshLoop()
+{
+    std::cout << "Starting refreshHtml loop" << std::endl;
+    while (true)
+    {
+        refresh_semaphore_.acquire();
+        refreshHtml();
+    }
+    std::cout << "Stopping refreshHtml loop" << std::endl;
 }
 
 void DatabaseObj::refreshHtml()
 {
+    /* Not needed now, but potentially required */
     std::lock_guard<std::mutex> lock(ping_pong_lock_);
 
     StatesPair state = std::atomic_load(&ping_pong_state_);
@@ -150,8 +170,7 @@ void DatabaseObj::refreshHtml()
     while(page.semaphores.try_acquire());
 
     /* Clearing file */
-    page.f_in->close();
-    page.f_in->open(page.f_out.get(), QIODeviceBase::WriteOnly | QIODeviceBase::Truncate, QFileDevice::AutoCloseHandle);
+    page.f_in->open(QIODeviceBase::WriteOnly | QIODeviceBase::Truncate);
 
     QDataStream filestream(page.f_in.get());
     
@@ -173,6 +192,7 @@ void DatabaseObj::refreshHtml()
     << "</body>\n"
     << "</html>\n";
 
+    page.f_in->close();
     state.flip();
     std::atomic_store(&ping_pong_state_, state);
 }

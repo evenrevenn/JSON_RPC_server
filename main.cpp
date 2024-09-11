@@ -10,10 +10,10 @@
 
 int main(int argc, char *argv[])
 {
-    QObject *obj = new QObject();
-    obj->setObjectName("Test obj");
-
     UserMetaTypes::registerTypes();
+    auto database = std::make_shared<QObject>(new DatabaseObj("DatabaseRoot"));
+
+    QObject *obj = database.get();
 
     QMetaType meta_t = QMetaType::fromName("HyperLink");
     qDebug() << "name:" << meta_t.name();
@@ -49,11 +49,10 @@ int main(int argc, char *argv[])
     link_t.save(f_stream, link_v.constData());
     qDebug() << f_stream.status();
     f.close();
-
-    auto *database = new DatabaseObj("DatabaseRoot");
+    
     ServersWrapper &wrapper = ServersWrapper::getInstance();
     
-    JsonRPCServer server1(12345, database);
+    JsonRPCServer server1(12345, database.get());
     // JsonRPCServer server2(12346);
     // JsonRPCServer server3(12347);
     

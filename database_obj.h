@@ -190,21 +190,23 @@ public:
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t deleteChild(JsonRPCServer::JsonRPCParams_t params);
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t listChildren(JsonRPCServer::JsonRPCParams_t params);
 
-    // bool event(QEvent *event) override;
+    void notifyRefresh() {refresh_semaphore_.release();}
 
 private:
     /* Using rvalue for forwarding reference in case of using lvalue references as Params_t */
     bool extractParamStr(const JsonRPCServer::JsonRPCParams_t &&params, const QString &key, std::string &str) const;
     
+    void refreshLoop();
     void refreshHtml();
+    std::binary_semaphore refresh_semaphore_;
+    std::jthread refresh_thread_;
 
     /** Ping pong for non-blocking client read */
     /* There is always one valid page file */
     struct htmlFileIO{
         htmlFileIO():semaphores(0){}
-        CleanUtils::autoCloseFileOutPtr f_out;
         CleanUtils::autoCloseFileInPtr f_in;
-        std::counting_semaphore<5> semaphores;
+        std::counting_semaphore<128> semaphores;
     };
     std::array<htmlFileIO, 2> html_ping_pong_;
     

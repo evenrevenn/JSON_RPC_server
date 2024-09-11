@@ -87,9 +87,10 @@ void WebServer::clientsListeningLoop(std::stop_token stopper, CleanUtils::Socket
     std::printf("Clients loop started\n");
     while(!stopper.stop_requested())
     {
-        std::lock_guard lock(clients_lock_);
+        std::unique_lock lock(clients_lock_);
 #ifdef _WIN32
         if (clients_fds.size() == 0){
+            lock.release();
             SLEEP_MS(100);
             continue;
         }
@@ -107,7 +108,7 @@ void WebServer::clientsListeningLoop(std::stop_token stopper, CleanUtils::Socket
         for (auto &poll_fd : clients_fds)
         {
             if (poll_fd.revents & POLLIN){
-                std::thread req_thread(&WebServer::processRequest, this, poll_fd.fd);
+                std::thread req_thread(&WebServer::processReqThreadF, this, poll_fd.fd);
                 req_thread.detach();
 
                 /* Dropping descriptor, responce and connection close is on processRequest */

@@ -31,9 +31,8 @@ Content-Length: %lld\r\n\
 Connection: close\r\n\r\n";
 }
 
-class JsonRPCServer : public QObject, public WebServer
+class JsonRPCServer : public WebServer
 {
-Q_OBJECT
 public:
     enum JsonRPCErrorCodes{
         NoError = 0,
@@ -53,7 +52,7 @@ public:
     /* Type of method parameters holder structure */
     typedef const QVariantMap & JsonRPCParams_t;
 
-    explicit JsonRPCServer(int port, QObject *target_root_obj, QObject *parent = nullptr);
+    explicit JsonRPCServer(int port, QObject *target_root_obj);
 
 protected:
     void processRequest(const SOCKET client) override;
