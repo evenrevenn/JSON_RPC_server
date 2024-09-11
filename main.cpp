@@ -10,8 +10,6 @@
 
 int main(int argc, char *argv[])
 {
-    std::cout << "I'm here" << std::endl;
-
     QObject *obj = new QObject();
     obj->setObjectName("Test obj");
 
@@ -44,21 +42,21 @@ int main(int argc, char *argv[])
     QMetaObject::invokeMethod(link_copy, "toHtml", Qt::DirectConnection, Q_RETURN_ARG(QByteArray, arr));
     link_t.debugStream(qDebug() << "from type:", link_v.constData());
 
-    QFile f("test.txt");
-    qDebug() << f.open(QIODevice::WriteOnly);
+    QFile f(QString("test.txt"));
+    qDebug() << f.open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
     QDataStream f_stream(&f);
-    f_stream << QString("arr");
+    // f_stream << "arr";
+    link_t.save(f_stream, link_v.constData());
     qDebug() << f_stream.status();
-    // qDebug() << f_stream.status();
-    // link_t.save(f_stream, link_v.constData());
-    // qDebug() << f_stream.status();
+    f.close();
 
     auto *database = new DatabaseObj("DatabaseRoot");
+    ServersWrapper &wrapper = ServersWrapper::getInstance();
+    
     JsonRPCServer server1(12345, database);
     // JsonRPCServer server2(12346);
     // JsonRPCServer server3(12347);
     
-    ServersWrapper &wrapper = ServersWrapper::getInstance();
     wrapper.addServer(server1);
     // wrapper.addServer(server1, server2, server3);
 

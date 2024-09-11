@@ -111,36 +111,31 @@ DatabaseObj::DatabaseObj(const QString &name, QObject *parent):QObject(parent)
     }
     QByteArray full_path = path.join('/').toLocal8Bit();
 
-#ifdef _WIN32
-    /* TODO: add windows mkdir */
-#else
-    struct stat st = {0};
-    if (stat(full_path.constData(), &st) == -1){
-        mkdir(full_path.constData(), 0777);
-    }
-#endif
     QByteArray full_path_ping = full_path;
     QByteArray full_path_pong = full_path;
-    full_path_ping.append("page0.html");
-    full_path_pong.append("page1.html");
+    full_path_ping.append("/page0.html");
+    full_path_pong.append("/page1.html");
     
-    html_ping_pong_[0].f_out = CleanUtils::autoCloseFileOutPtr(fopen(full_path_ping.constData(), "r"));
-    html_ping_pong_[0].f_in = CleanUtils::autoCloseFileInPtr(new QFile());
-    html_ping_pong_[0].f_in->open(html_ping_pong_[0].f_out.get(), QIODeviceBase::Truncate, QFileDevice::AutoCloseHandle);
-    
-    html_ping_pong_[1].f_out = CleanUtils::autoCloseFileOutPtr(fopen(full_path_pong.constData(), "r"));
-    html_ping_pong_[1].f_in = CleanUtils::autoCloseFileInPtr(new QFile());
-    html_ping_pong_[1].f_in->open(html_ping_pong_[1].f_out.get(), QIODeviceBase::Truncate, QFileDevice::AutoCloseHandle);
-}
+    html_ping_pong_[0].f_in = CleanUtils::autoCloseFileInPtr(new QFile(full_path_ping));
+    html_ping_pong_[0].f_in->open(QIODeviceBase::WriteOnly | QIODeviceBase::Truncate);
 
-bool DatabaseObj::event(QEvent *event)
-{
-    if (event->type() == QEvent::DynamicPropertyChange){
-        refreshHtml();
-        return true;
+    auto f = fopen(full_path_ping.constData(), "rb");
+    if (!f){
+        std::printf("Error opening html file %s\n", full_path_ping.constData());
+        exit(EXIT_FAILURE);
     }
+    html_ping_pong_[0].f_out = CleanUtils::autoCloseFileOutPtr(f);
+    
 
-    return false;
+    html_ping_pong_[1].f_in = CleanUtils::autoCloseFileInPtr(new QFile(full_path_pong));
+    html_ping_pong_[1].f_in->open(QIODeviceBase::WriteOnly | QIODeviceBase::Truncate);
+
+    f = fopen(full_path_pong.constData(), "rb");
+    if (!f){
+        std::printf("Error opening html file %s\n", full_path_pong.constData());
+        exit(EXIT_FAILURE);
+    }
+    html_ping_pong_[1].f_out = CleanUtils::autoCloseFileOutPtr(fopen(full_path_pong.constData(), "r"));
 }
 
 void DatabaseObj::refreshHtml()
@@ -156,7 +151,7 @@ void DatabaseObj::refreshHtml()
 
     /* Clearing file */
     page.f_in->close();
-    page.f_in->open(page.f_out.get(), QIODeviceBase::Truncate, QFileDevice::AutoCloseHandle);
+    page.f_in->open(page.f_out.get(), QIODeviceBase::WriteOnly | QIODeviceBase::Truncate, QFileDevice::AutoCloseHandle);
 
     QDataStream filestream(page.f_in.get());
     

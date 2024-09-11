@@ -16,7 +16,7 @@ database_obj.cpp
 )
 set_target_properties(JsonRPC PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-set_target_properties(JsonRPC PROPERTIES WIN32_EXECUTABLE ON)
+# set_target_properties(JsonRPC PROPERTIES WIN32_EXECUTABLE ON)
 
 add_subdirectory(ServersCore)
 target_link_libraries(JsonRPC PRIVATE ServersCore)

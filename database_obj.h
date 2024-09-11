@@ -45,8 +45,21 @@ private:
     friend QDebug & operator<<(QDebug &debug,const HyperLink & link){
         return debug << link.url_ << ',' << link.text_;
     }
+
     friend QDataStream & operator<<(QDataStream &stream, const HyperLink &link){
-        return stream << "<a href=\"" << link.url_ << "\">" << link.text_ << "</a>";
+        ssize_t len = std::snprintf(nullptr, 0, "<a href=\"%s\">%s</a>", link.url_.constData(), link.text_.constData());
+        auto buf = std::unique_ptr<char[]>(new char[len + 1]);
+
+        len = std::snprintf(buf.get(), len + 1, "<a href=\"%s\">%s</a>", link.url_.constData(), link.text_.constData());
+        return stream.writeBytes(buf.get(), len);
+
+        // return stream << "<a href=\"" << link.url_.constData() << "\">" << link.text_.constData() << "</a>";
+    }
+    friend QDataStream & operator>>(QDataStream &stream, const HyperLink &link)
+    {
+        /* TODO: add reading from stream */
+        QString temp;
+        return stream >> temp;
     }
 };
 
@@ -74,8 +87,21 @@ private:
     friend QDebug& operator<<(QDebug &debug,const Text & text_field){
         return debug << text_field.text_;
     }
+
     friend QDataStream & operator<<(QDataStream &stream, const Text &text_field){
-        return stream << "<p>" << text_field.text_ << "</p>";
+        ssize_t len = std::snprintf(nullptr, 0, "<p>%s</p>", text_field.text_.constData());
+        auto buf = std::unique_ptr<char[]>(new char[len + 1]);
+
+        len = std::snprintf(buf.get(), len + 1, "<p>%s</p>", text_field.text_.constData());
+        return stream.writeBytes(buf.get(), len);
+
+        // return stream << "<p>" << text_field.text_ << "</p>";
+    }
+    friend QDataStream & operator>>(QDataStream &stream, const Text &text_field)
+    {
+        /* TODO: add reading from stream */
+        QString temp;
+        return stream >> temp;
     }
 };
 
@@ -105,9 +131,22 @@ private:
     friend QDebug& operator<<(QDebug &debug,const Header & header_field){
         return debug << header_field.text_ << ',' << header_field.level_;
     }
+
     friend QDataStream & operator<<(QDataStream &stream, const Header &header_field){
-        return stream << "<h" << header_field.level_ << '>' << header_field.text_\
-        << "</h" << header_field.level_ << '>';
+        ssize_t len = std::snprintf(nullptr, 0, "<h%d>%s</h%d>", header_field.level_, header_field.text_.constData(), header_field.level_);
+        auto buf = std::unique_ptr<char[]>(new char[len + 1]);
+
+        len = std::snprintf(buf.get(), len + 1, "<h%d>%s</h%d>", header_field.level_, header_field.text_.constData(), header_field.level_);
+        return stream.writeBytes(buf.get(), len);
+
+        // return stream << "<h" << header_field.level_ << '>' << header_field.text_\
+        // << "</h" << header_field.level_ << '>';
+    }
+    friend QDataStream & operator>>(QDataStream &stream, const Header &header_field)
+    {
+        /* TODO: add reading from stream */
+        QString temp;
+        return stream >> temp;
     }
 };
 
@@ -151,7 +190,7 @@ public:
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t deleteChild(JsonRPCServer::JsonRPCParams_t params);
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t listChildren(JsonRPCServer::JsonRPCParams_t params);
 
-    bool event(QEvent *event) override;
+    // bool event(QEvent *event) override;
 
 private:
     /* Using rvalue for forwarding reference in case of using lvalue references as Params_t */

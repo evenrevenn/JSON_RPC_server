@@ -26,7 +26,16 @@ public:
     void addOneServer(Server_t & server);
 
 private:
-    explicit ServersWrapper(){};
+    explicit ServersWrapper()
+    {
+#ifdef _WIN32
+    WORD wVersionRequested;
+    WSADATA wsaData;
+
+    wVersionRequested = MAKEWORD(2, 2);
+    if(WSAStartup(wVersionRequested, &wsaData)!=0){ exit(EXIT_FAILURE); }
+#endif
+    };
 
     /* Thread function, polls all servers socket fds for new connections */
     static void serversListeningLoop(std::stop_token stopper);

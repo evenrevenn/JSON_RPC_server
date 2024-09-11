@@ -50,10 +50,10 @@ class httpRecvBuffers
 {
 public:
     /* Allocating memory for buffers and assigning QString to each one */
-    httpRecvBuffers():
-    busy_flags(false)
+    httpRecvBuffers()
     {
         for(int i = 0; i < N; i++){
+            busy_flags[i] = false;
             mem_pool[i] = new char[buf_size];
         }
     }

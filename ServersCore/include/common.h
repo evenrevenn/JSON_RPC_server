@@ -29,6 +29,7 @@
     #define POLL_FD pollfd
     #define OPTVAL_T const char
     #define SO_REUSEPORT SO_BROADCAST
+    #define SLEEP_MS(t) Sleep(t)
     typedef signed long long ssize_t;
 #else
     #define SOCKET int
@@ -38,6 +39,7 @@
     #define POLL(fds, nfds, timeout) poll(fds, nfds, timeout)
     #define POLL_FD pollfd
     #define INVALID_SOCKET -1
+    #define SLEEP_MS(t) sleep(t)
     #define OPTVAL_T int
 #endif
 

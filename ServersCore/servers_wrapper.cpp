@@ -12,6 +12,7 @@ void ServersWrapper::startListenLoop()
 
 void ServersWrapper::serversListeningLoop(std::stop_token stopper)
 {
+    std::printf("Servers loop started\n");
     auto &wrapper = ServersWrapper::getInstance();
 
     while(!stopper.stop_requested())
@@ -50,7 +51,7 @@ void ServersWrapper::serversListeningLoop(std::stop_token stopper)
             if (poll_fd.revents & POLLNVAL){
                 /* Server object have been destroyed */
                 std::printf("Server socket %d closed\n", poll_fd.fd);
-                poll_fd.fd = -1;
+                poll_fd.fd = INVALID_SOCKET;
                 invalid_server = true;
             }
         }
@@ -63,4 +64,5 @@ void ServersWrapper::serversListeningLoop(std::stop_token stopper)
             }
         }
     }
+    std::printf("Servers loop stop requested\n");
 }

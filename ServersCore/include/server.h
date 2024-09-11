@@ -8,6 +8,7 @@
 #include <string.h>
 #include <thread>
 #include <mutex>
+#include <type_traits>
 
 namespace CleanUtils{
     class autoCloseSocket{
@@ -23,11 +24,11 @@ namespace CleanUtils{
         :POLL_FD(other){}
         
         autoClosedSocketFd(autoClosedSocketFd &&other) noexcept
-        {fd = std::move(other.fd); events = std::move(other.events); other.fd = -1;}
+        {fd = std::move(other.fd); events = std::move(other.events); other.fd = INVALID_SOCKET;}
 
         autoClosedSocketFd & operator= (autoClosedSocketFd &&other) noexcept
         {fd = std::move(other.fd); events = std::move(other.events);
-        other.fd = -1; return *this;}
+        other.fd = INVALID_SOCKET; return *this;}
 
         autoClosedSocketFd(POLL_FD &&other) noexcept
         :POLL_FD(other){}

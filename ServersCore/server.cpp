@@ -9,16 +9,16 @@
 
 WebServer::WebServer(int port)
 {
-    server_socket_ = socket(AF_INET, SOCK_STREAM, 0);
-    if(server_socket_ == -1){
-        std::cout << "Can't create socket" << std::endl;
+    server_socket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if(server_socket_ == INVALID_SOCKET){
+        std::printf("Can't create socket, errno %d", GET_SOCKET_ERRNO());
         exit(EXIT_FAILURE);
     }
 
 #ifdef _WIN32
     unsigned long set = 1;
     if (ioctlsocket(server_socket_, FIONBIO, &set)){
-        std::printf("Can't set socket non-blocking, errno %ld\n", WSAGetLastError());
+        std::printf("Can't set socket non-blocking, errno %d\n", WSAGetLastError());
         exit(EXIT_FAILURE);
     }
 #else
@@ -39,10 +39,12 @@ WebServer::WebServer(int port)
         std::printf("Can't set socket reuse addr, errno %d\n", GET_SOCKET_ERRNO());
         exit(EXIT_FAILURE);
     }
+#ifndef _WIN32
     if (setsockopt(server_socket_, SOL_SOCKET, SO_REUSEPORT, &opt_val, sizeof(int)) < 0){
         std::printf("Can't set socket reuse port, errno %d\n", GET_SOCKET_ERRNO());
         exit(EXIT_FAILURE);
     }
+#endif
 
     sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
@@ -82,12 +84,19 @@ void WebServer::startListeningLoop(CleanUtils::SocketFdsArray &clients_fds)
 
 void WebServer::clientsListeningLoop(std::stop_token stopper, CleanUtils::SocketFdsArray &clients_fds)
 {
+    std::printf("Clients loop started\n");
     while(!stopper.stop_requested())
     {
         std::lock_guard lock(clients_lock_);
+#ifdef _WIN32
+        if (clients_fds.size() == 0){
+            SLEEP_MS(100);
+            continue;
+        }
+#endif
         int ret = POLL(clients_fds.data(), clients_fds.size(), 100);
         if (ret < 0){
-            std::cout << "Clients poll error" << std::endl;
+            std::printf("Clients poll error, errno = %d\n", GET_SOCKET_ERRNO());
             exit(EXIT_FAILURE);
         }
         else if(ret == 0){
@@ -102,12 +111,12 @@ void WebServer::clientsListeningLoop(std::stop_token stopper, CleanUtils::Socket
                 req_thread.detach();
 
                 /* Dropping descriptor, responce and connection close is on processRequest */
-                poll_fd.fd = -1;
+                poll_fd.fd = INVALID_SOCKET;
                 client_hang = true;
             }
             else if (poll_fd.revents & POLLHUP){
                 /* Client closed connection */
-                poll_fd.fd = -1;
+                poll_fd.fd = INVALID_SOCKET;
                 client_hang = true;
             }
         }
@@ -122,4 +131,5 @@ void WebServer::clientsListeningLoop(std::stop_token stopper, CleanUtils::Socket
             }
         }
     }
+    std::printf("Clients loop stop requested\n");
 }
