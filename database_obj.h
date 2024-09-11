@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QFile>
 #include <array>
+#include <semaphore>
 #include "json_rpc_server.h"
 
 namespace UserMetaTypes

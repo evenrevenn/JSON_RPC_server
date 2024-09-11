@@ -34,7 +34,7 @@ WebServer::WebServer(int port)
     }
 #endif
 
-    int opt_val = 1;
+    OPTVAL_T opt_val = 1;
     if (setsockopt(server_socket_, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(int)) < 0){
         std::printf("Can't set socket reuse addr, errno %d\n", GET_SOCKET_ERRNO());
         exit(EXIT_FAILURE);
@@ -94,7 +94,7 @@ void WebServer::clientsListeningLoop(std::stop_token stopper, CleanUtils::Socket
             continue;
         }
 
-        bool client_client = false;
+        bool client_hang = false;
         for (auto &poll_fd : clients_fds)
         {
             if (poll_fd.revents & POLLIN){
@@ -103,18 +103,18 @@ void WebServer::clientsListeningLoop(std::stop_token stopper, CleanUtils::Socket
 
                 /* Dropping descriptor, responce and connection close is on processRequest */
                 poll_fd.fd = -1;
-                client_client = true;
+                client_hang = true;
             }
             else if (poll_fd.revents & POLLHUP){
                 /* Client closed connection */
                 poll_fd.fd = -1;
-                client_client = true;
+                client_hang = true;
             }
         }
         /* Cleaning hang or processing clients */
-        if (client_client){
+        if (client_hang){
             auto iter = clients_fds.begin();
-            POLL_FD invalid{.fd = -1};
+            POLL_FD invalid{.fd = INVALID_SOCKET};
             while (iter != clients_fds.end()){
                 iter = std::find(clients_fds.begin(), clients_fds.end(), invalid);
                 clients_fds.erase(iter);

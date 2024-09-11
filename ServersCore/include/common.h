@@ -26,7 +26,10 @@
     #define GET_SOCKET_ERRNO() (WSAGetLastError())
     #define IS_VALID_SOCKET(s) ((s) != INVALID_SOCKET)
     #define POLL(fdarray, fds, timeout) WSAPoll(fdarray, fds, timeout)
-    #define POLL_FD LPWSAPOLLFD
+    #define POLL_FD pollfd
+    #define OPTVAL_T const char
+    #define SO_REUSEPORT SO_BROADCAST
+    typedef signed long long ssize_t;
 #else
     #define SOCKET int
     #define CLOSE_SOCKET(s) close(s)
@@ -34,6 +37,8 @@
     #define IS_VALID_SOCKET(s) ((s) >= 0)
     #define POLL(fds, nfds, timeout) poll(fds, nfds, timeout)
     #define POLL_FD pollfd
+    #define INVALID_SOCKET -1
+    #define OPTVAL_T int
 #endif
 
 #define MAX_DATA_BUFFER_SIZE 2048

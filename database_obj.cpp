@@ -111,7 +111,7 @@ DatabaseObj::DatabaseObj(const QString &name, QObject *parent):QObject(parent)
     }
     QByteArray full_path = path.join('/').toLocal8Bit();
 
-#ifdef WIN_32
+#ifdef _WIN32
     /* TODO: add windows mkdir */
 #else
     struct stat st = {0};
@@ -165,8 +165,13 @@ void DatabaseObj::refreshHtml()
     << "<html>\n"
     << "<body>\n";
 
+    QVariant var;
+    QMetaType type;
     for (const QByteArray &name : this->dynamicPropertyNames()){
-        filestream << this->property(name);
+        var = this->property(name);
+        type = var.metaType();
+
+        type.save(filestream, var.constData());
     }
 
     filestream 

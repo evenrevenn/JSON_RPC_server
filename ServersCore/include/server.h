@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string.h>
 #include <thread>
+#include <mutex>
 
 namespace CleanUtils{
     class autoCloseSocket{

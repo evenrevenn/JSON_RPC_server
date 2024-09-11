@@ -30,6 +30,7 @@ public:
     }
 
     operator void*(){return buffer + strnlen(buffer, buf_size);}
+    operator char*(){return buffer + strnlen(buffer, buf_size);}
     operator QString() const{return QString::fromLocal8Bit(buffer, strnlen(buffer, buf_size));} // Deep copy
     operator QByteArray() const{return QByteArray::fromRawData(buffer, buf_size);} // No deep copy here
     operator bool() const{return busy_flag;}
@@ -50,7 +51,7 @@ class httpRecvBuffers
 public:
     /* Allocating memory for buffers and assigning QString to each one */
     httpRecvBuffers():
-    busy_flags{false}
+    busy_flags(false)
     {
         for(int i = 0; i < N; i++){
             mem_pool[i] = new char[buf_size];

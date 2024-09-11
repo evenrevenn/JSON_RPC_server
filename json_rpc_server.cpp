@@ -82,7 +82,7 @@ void JsonRPCServer::processRequest(const SOCKET client)
             }
         }
 
-        ret = poll(client_ptr.get(), 1, WAIT_TIMEOUT_MS);
+        ret = POLL(client_ptr.get(), 1, WAIT_TIMEOUT_MS);
         if (ret == 1){
             if (client_ptr->revents & POLLHUP){
                 std::printf("Client closed connection\n");
@@ -262,7 +262,7 @@ void JsonRPCServer::sendJsonResponseValid(int id, const QString &result, CleanUt
     
     while (sent < json_len + http_len)
     {
-        ret = poll(client.get(), 1, WAIT_TIMEOUT_MS);
+        ret = POLL(client.get(), 1, WAIT_TIMEOUT_MS);
         if (ret == 1){
             if (checkWithMsg(client->revents & POLLHUP, "Client closed connection\n")){
                 return;
@@ -325,7 +325,7 @@ void JsonRPCServer::sendJsonResponseError(int id, JsonRPCErrorCodes error_code, 
     
     while (sent < json_len + http_len)
     {
-        ret = poll(client.get(), 1, WAIT_TIMEOUT_MS);
+        ret = POLL(client.get(), 1, WAIT_TIMEOUT_MS);
         if (ret == 1){
             if (checkWithMsg(client->revents & POLLHUP, "Client closed connection\n")){
                 return;

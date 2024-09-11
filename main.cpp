@@ -10,6 +10,8 @@
 
 int main(int argc, char *argv[])
 {
+    std::cout << "I'm here" << std::endl;
+
     QObject *obj = new QObject();
     obj->setObjectName("Test obj");
 
@@ -42,9 +44,8 @@ int main(int argc, char *argv[])
     QMetaObject::invokeMethod(link_copy, "toHtml", Qt::DirectConnection, Q_RETURN_ARG(QByteArray, arr));
     link_t.debugStream(qDebug() << "from type:", link_v.constData());
 
-    QFile f;
-    FILE *f_c = fopen("test.txt", "w");
-    qDebug() << f.open(f_c, QIODevice::WriteOnly);
+    QFile f("test.txt");
+    qDebug() << f.open(QIODevice::WriteOnly);
     QDataStream f_stream(&f);
     f_stream << QString("arr");
     qDebug() << f_stream.status();

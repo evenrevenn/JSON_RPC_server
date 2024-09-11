@@ -56,7 +56,7 @@ void ServersWrapper::serversListeningLoop(std::stop_token stopper)
         }
         if (invalid_server){
             auto iter = wrapper.servers_.begin();
-            POLL_FD invalid{.fd = -1};
+            POLL_FD invalid{.fd = INVALID_SOCKET};
             while (iter != wrapper.servers_.end()){
                 iter = std::find(wrapper.servers_.begin(), wrapper.servers_.end(), invalid);
                 wrapper.servers_.erase(iter);

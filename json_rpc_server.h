@@ -27,7 +27,7 @@ namespace HTTPTemplates
     static constexpr char json_post_response_fmt[] =
 "HTTP/1.1 %d %s\r\n\
 Content-Type: application/json-rpc 2.0\r\n\
-Content-Length: %lu\r\n\
+Content-Length: %lld\r\n\
 Connection: close\r\n\r\n";
 }
 
@@ -85,7 +85,7 @@ inline void JsonRPCServer::receiveMessageBodyPOST(QObject *target, httpRecvBuffe
 
     while(recv_length < length)
     {
-        ssize_t ret = poll(client.get(), 1, WAIT_TIMEOUT_MS);
+        ssize_t ret = POLL(client.get(), 1, WAIT_TIMEOUT_MS);
         if (ret == 1){
             if (client->revents & POLLHUP){
                 std::printf("Client closed connection\n");
