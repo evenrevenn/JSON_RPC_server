@@ -9,16 +9,16 @@
 namespace RegularExpressions
 {
     static const QRegularExpression http_general_req\
-    (R"((?<http_method>\S+) /\S* HTTP/1.1\r\n(?:.*)(?=\r\n\r\n))",\
+    (R"((?<http_method>\S+) /\S* HTTP/1\.1\r\n(?:.*)(?=\r\n\r\n))",\
     QRegularExpression::DotMatchesEverythingOption);
 
     static const QRegularExpression http_json_POST\
     /* Ugly one-line, but better than escaping characters */
-    (R"((?<=POST )(?<http_URI>/\S*) HTTP/1\.1\r\n(?:.*)Content-Type: application/json-rpc 2\.0\r\n(?:.*)Content-Length: (?<http_length>\d+)(?:.*)Accept: application/json-rpc 2\.0\r\n(?:.*)Connection: (?<http_connection>\S+)(?:\r\n[^\r\n]*)?(?=\r\n\r\n))",
+    (R"((?<=POST )(?<http_URI>/\S*) HTTP/1\.1\r\n(?:.*)Content-Type: application/json-rpc 2\.0\r\n(?:.*)Content-Length: (?<http_length>\d+)(?:.*)Accept: application/json-rpc 2\.0\r\n(?:.*)Connection: (?<http_connection>\S+)(?:\r\n.*\r\n)*(?=\r\n\r\n))",
     QRegularExpression::DotMatchesEverythingOption);
     
     static const QRegularExpression http_json_GET\
-    (R"((?<=GET )(?<http_URI>/\S*) HTTP/1.1\r\n(?:.*)Connection: (?<http_connection>\S+)(?:\r\n[^\r\n]*)?(?=\r\n\r\n))",
+    (R"((?<=GET )(?<http_URI>/\S*) HTTP/1\.1\r\n(?:.*)Connection: (?<http_connection>\S+)(?:\r\n.*\r\n)*(?=\r\n\r\n))",
     QRegularExpression::DotMatchesEverythingOption);
 }
 

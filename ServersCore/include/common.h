@@ -19,6 +19,7 @@
     #include <sys/select.h>
     #include <poll.h>
     #include <sys/stat.h>
+    #include <sys/sendfile.h>
 #endif
 
 #ifdef _WIN32

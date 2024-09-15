@@ -29,6 +29,32 @@ public:
         return body_start ? QByteArray::fromRawData(body_start + 4, length) : QByteArray();
     }
 
+    /* Cleaning when overloaded, worse than circular buffer, but easier to convert to QString and QByteArray */
+    /* Return amount of cleaned memory */
+    /* Leaving data in front of last http message untouched */
+    size_t cleanBuffer() const
+    {
+        const char *leftover = buffer;
+        const char *temp = std::strstr(buffer, "\r\n\r\n");
+        if (!temp){
+            return 0;
+        }
+        
+        while(temp){
+            leftover = temp + 4;
+            temp = std::strstr(temp + 4, "\r\n\r\n");
+        }
+        auto leftover_len = buf_size - (leftover - buffer);
+        if (leftover_len < buf_size / 2){
+            memcpy(buffer, leftover, leftover_len);
+        }
+        else {
+            memmove(buffer, leftover, leftover_len);
+        }
+        
+        return buf_size - leftover_len;
+    }
+
     operator void*(){return buffer + strnlen(buffer, buf_size);}
     operator char*(){return buffer + strnlen(buffer, buf_size);}
     operator QString() const{return QString::fromLocal8Bit(buffer, strnlen(buffer, buf_size));} // Deep copy

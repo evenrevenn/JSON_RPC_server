@@ -125,7 +125,7 @@ refresh_semaphore_(0)
     
 
     html_ping_pong_[0].f_in = CleanUtils::autoCloseFileInPtr(new QFile(full_path_ping));
-    html_ping_pong_[0].f_in->open(QIODeviceBase::WriteOnly);
+    html_ping_pong_[0].f_in->open(QIODeviceBase::NewOnly);
     html_ping_pong_[0].f_in->close();
     
     if (!CleanUtils::autoCloseFileOutPtr(std::fopen(full_path_ping.constData(), "rb"))){
@@ -135,7 +135,7 @@ refresh_semaphore_(0)
     
 
     html_ping_pong_[1].f_in = CleanUtils::autoCloseFileInPtr(new QFile(full_path_pong));
-    html_ping_pong_[1].f_in->open(QIODeviceBase::WriteOnly);
+    html_ping_pong_[1].f_in->open(QIODeviceBase::NewOnly);
     html_ping_pong_[1].f_in->close();
 
     if (!CleanUtils::autoCloseFileOutPtr(std::fopen(full_path_pong.constData(), "rb"))){
@@ -144,6 +144,17 @@ refresh_semaphore_(0)
     }
 
     refresh_thread_ = std::jthread(&DatabaseObj::refreshLoop, this);
+}
+
+DatabaseObj::PingPongClientAccess DatabaseObj::getHTMLFile()
+{
+    StatesPair state = std::atomic_load(&ping_pong_state_);
+    htmlFileIO &page = state.first ? html_ping_pong_[0] : html_ping_pong_[1];
+
+    FILE *f = std::fopen(page.f_in->fileName().toLocal8Bit().constData(), "rb");
+    size_t len = page.f_in->size();
+
+    return PingPongClientAccess(page.semaphores, f, len);
 }
 
 void DatabaseObj::refreshLoop()
@@ -164,20 +175,26 @@ void DatabaseObj::refreshHtml()
 
     StatesPair state = std::atomic_load(&ping_pong_state_);
     /* Modifying invalid page */
-    htmlFileIO &page = state.first ? html_ping_pong_[0] : html_ping_pong_[1];
+    htmlFileIO &page = state.first ? html_ping_pong_[1] : html_ping_pong_[0];
     
     /* Blocks if any clients still read from invalidated earlier page */
     while(page.semaphores.try_acquire());
 
     /* Clearing file */
-    page.f_in->open(QIODeviceBase::WriteOnly | QIODeviceBase::Truncate);
+    page.f_in->open(QIODeviceBase::WriteOnly | QIODeviceBase::Truncate/* | QIODeviceBase::Text*/);
 
     QDataStream filestream(page.f_in.get());
     
-    filestream 
-    << "<!DOCTYPE html>\n"
-    << "<html>\n"
-    << "<body>\n";
+    constexpr char head[] = \
+"<!DOCTYPE html>\n\
+<html>\n\
+<body>\n";
+
+    constexpr char tail[] = \
+"</body>\n\
+</html>\n";
+
+    filestream.writeRawData(head, sizeof(head) - 1);
 
     QVariant var;
     QMetaType type;
@@ -188,9 +205,7 @@ void DatabaseObj::refreshHtml()
         type.save(filestream, var.constData());
     }
 
-    filestream 
-    << "</body>\n"
-    << "</html>\n";
+    filestream.writeRawData(tail, sizeof(tail));
 
     page.f_in->close();
     state.flip();

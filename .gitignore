@@ -2,3 +2,4 @@ build/*
 task.txt
 .vscode/*
 install/*
+tests/responce.bin

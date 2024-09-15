@@ -66,10 +66,17 @@ protected:
 private:
     void startListeningLoop(CleanUtils::SocketFdsArray &clients_fds);
     void clientsListeningLoop(std::stop_token stopper, CleanUtils::SocketFdsArray &clients_fds);
-    void processReqThreadF(const SOCKET client){
-        std::printf("Processing request\n");
+    void processReqThreadF(const SOCKET client)
+    {
+        int id = req_id_++;
+        std::printf("Processing request %d\n", id);
         try{ processRequest(client); }
-        catch(std::runtime_error &e){ std::cerr << "Error while processing: " << e.what() << std::endl; } }
+        catch(std::runtime_error &e){ std::cerr << "Error while processing "<< id << ": " << e.what() << std::endl; return;}
+        std::printf("Processed successfully %d\n", id);
+    }
+
+    /* Inner id for easier request handling track */
+    static inline std::atomic<int> req_id_ = 0;
 
     SOCKET server_socket_;
 

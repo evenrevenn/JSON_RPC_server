@@ -51,7 +51,8 @@ private:
         auto buf = std::unique_ptr<char[]>(new char[len + 1]);
 
         len = std::snprintf(buf.get(), len + 1, "<a href=\"%s\">%s</a>", link.url_.constData(), link.text_.constData());
-        return stream.writeBytes(buf.get(), len);
+        stream.writeRawData(buf.get(), len);
+        return stream;
 
         // return stream << "<a href=\"" << link.url_.constData() << "\">" << link.text_.constData() << "</a>";
     }
@@ -93,7 +94,8 @@ private:
         auto buf = std::unique_ptr<char[]>(new char[len + 1]);
 
         len = std::snprintf(buf.get(), len + 1, "<p>%s</p>", text_field.text_.constData());
-        return stream.writeBytes(buf.get(), len);
+        stream.writeRawData(buf.get(), len);
+        return stream;
 
         // return stream << "<p>" << text_field.text_ << "</p>";
     }
@@ -137,7 +139,8 @@ private:
         auto buf = std::unique_ptr<char[]>(new char[len + 1]);
 
         len = std::snprintf(buf.get(), len + 1, "<h%d>%s</h%d>", header_field.level_, header_field.text_.constData(), header_field.level_);
-        return stream.writeBytes(buf.get(), len);
+        stream.writeRawData(buf.get(), len);
+        return stream;
 
         // return stream << "<h" << header_field.level_ << '>' << header_field.text_\
         // << "</h" << header_field.level_ << '>';
@@ -176,6 +179,7 @@ namespace CleanUtils{
     typedef std::unique_ptr<QFile, CleanUtils::autoCloseFile> autoCloseFileInPtr;
 }
 
+
 class DatabaseObj : public QObject
 {
 Q_OBJECT
@@ -191,8 +195,29 @@ public:
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t listChildren(JsonRPCServer::JsonRPCParams_t params);
 
     void notifyRefresh() {refresh_semaphore_.release();}
+    
+    typedef std::counting_semaphore<128> HtmlPingPongSemaphore_t;
+
+/* RAII accessor to html file */
+    class PingPongClientAccess{
+    public:
+        friend class DatabaseObj;
+        operator FILE *(){return file_;}
+        size_t length() const {return length_;}
+        ~PingPongClientAccess(){ semaphore_.acquire(); }
+
+    private:
+        PingPongClientAccess(HtmlPingPongSemaphore_t &semaphores, FILE *f, size_t length):
+        file_(f), length_(length), semaphore_(semaphores){ semaphore_.release(); }
+
+        FILE *file_;
+        const size_t length_;
+        HtmlPingPongSemaphore_t &semaphore_;
+    };
+    PingPongClientAccess getHTMLFile();
 
 private:
+
     /* Using rvalue for forwarding reference in case of using lvalue references as Params_t */
     bool extractParamStr(const JsonRPCServer::JsonRPCParams_t &&params, const QString &key, std::string &str) const;
     
@@ -206,7 +231,7 @@ private:
     struct htmlFileIO{
         htmlFileIO():semaphores(0){}
         CleanUtils::autoCloseFileInPtr f_in;
-        std::counting_semaphore<128> semaphores;
+        HtmlPingPongSemaphore_t semaphores;
     };
     std::array<htmlFileIO, 2> html_ping_pong_;
     

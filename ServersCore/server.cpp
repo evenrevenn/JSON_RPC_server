@@ -9,6 +9,8 @@
 
 WebServer::WebServer(int port)
 {
+    req_id_ = 0;
+
     server_socket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(server_socket_ == INVALID_SOCKET){
         std::printf("Can't create socket, errno %d", GET_SOCKET_ERRNO());
