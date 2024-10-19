@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QFile>
+#include <QThread>
 #include <array>
 #include <semaphore>
 #include "json_rpc_server.h"
@@ -190,6 +191,9 @@ public:
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t deleteProperty(JsonRPCServer::JsonRPCParams_t params);
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t listProperties(JsonRPCServer::JsonRPCParams_t params);
 
+    Q_INVOKABLE JsonRPCServer::JsonRPCRet_t setPropertyAttr(JsonRPCServer::JsonRPCParams_t params);
+    // Q_INVOKABLE JsonRPCServer::JsonRPCRet_t resetProperty(JsonRPCServer::JsonRPCParams_t params);
+
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t addChild(JsonRPCServer::JsonRPCParams_t params);
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t deleteChild(JsonRPCServer::JsonRPCParams_t params);
     Q_INVOKABLE JsonRPCServer::JsonRPCRet_t listChildren(JsonRPCServer::JsonRPCParams_t params);
@@ -221,10 +225,10 @@ private:
     /* Using rvalue for forwarding reference in case of using lvalue references as Params_t */
     bool extractParamStr(const JsonRPCServer::JsonRPCParams_t &&params, const QString &key, std::string &str) const;
     
-    void refreshLoop();
+    void startRefreshLoop();
     void refreshHtml();
     std::binary_semaphore refresh_semaphore_;
-    std::jthread refresh_thread_;
+    QThread refresh_thread_;
 
     /** Ping pong for non-blocking client read */
     /* There is always one valid page file */

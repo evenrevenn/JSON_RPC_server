@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POST Request Form</title>
+</head>
+<body>
+    <h1>TEST</h1>
+    <form id="dataForm">
+        <label for="field1">Method:</label>
+        <input type="text" id="field1" name="field1" required>
+        <br>
+        <label for="field2">Params:</label>
+        <input type="text" id="field2" name="field2" required>
+        <br>
+        <label for="field3">Id:</label>
+        <input type="text" id="field3" name="field3" required>
+        <br>
+        <button type="button" onclick="submitData()">Submit</button>
+    </form>
+    <script>
+        function submitData() {
+            const method = document.getElementById('field1').value;
+            const params = document.getElementById('field2').value;
+            const id = document.getElementById('field3').value;
+
+            // Construct the request body
+            const requestData = {
+                jsonrpc: "2.0",
+                method: method, // Use value from input
+                params: JSON.parse(params), // Convert params to an object (assuming it's a valid JSON string)
+                id: id // Use value from input
+            };
+
+            // Send the POST request
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestData) // Convert object to JSON string
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>

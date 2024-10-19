@@ -2,6 +2,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include "html_server.h"
+#include "config.h"
 
 JsonRPCServer::JsonRPCServer(int port, QObject *target_root_obj):
 WebServer(port),
@@ -75,7 +77,15 @@ void JsonRPCServer::processRequest(const SOCKET client)
                     }
                 }
                 else if (method == "GET"){
-                    return processRequestGET(buffer, std::move(client_ptr));
+                    auto reg_match_iter = RegularExpressions::http_json_GET.globalMatch(buffer);
+                    while (reg_match_iter.hasNext()){
+                        reg_match = reg_match_iter.next();
+                        processRequestGET(buffer, std::forward<CleanUtils::socket_ptr>(client_ptr));
+
+                        if (reg_match.captured("http_connection") == "close"){
+                            return;
+                        }
+                    }
                 }
             }
         }
@@ -169,6 +179,82 @@ void JsonRPCServer::processRequestPOST(QObject *target, const QByteArray &req_bo
 
 void JsonRPCServer::processRequestGET(QByteArray &&req_body, CleanUtils::socket_ptr &&client)
 {
+    char buf[512] = "";
+    ssize_t http_len = 0;
+    http_len = std::snprintf(buf, 512, HTTPTemplates::html_get_response_fmt, 200, HTTPConstants::getReasonPhrase(HTTPConstants::OK), 1944, HTTPConstants::getConnectionText(false));
+
+    client->events = POLLOUT;
+    ssize_t sent = 0;
+    ssize_t ret = 0;
+    
+    while (sent < http_len)
+    {
+        ret = POLL(client.get(), 1, WAIT_TIMEOUT_MS);
+        if (ret == 1){
+            if (client->revents & POLLHUP){
+                throw std::runtime_error("Client closed connection\n");
+            }
+            if (client->revents & POLLOUT){
+                ret = send(client->fd, buf + sent, http_len - sent, 0);
+                if (auto err = GET_SOCKET_ERRNO(); ret < 0 && err != EAGAIN){
+                    throw std::runtime_error(std::string("Send failed, errno ") + std::to_string(err));
+                }
+                else if (ret == 0){
+                    throw std::runtime_error("Send timed out, closing connection\n");
+                }
+                else{
+                    sent += ret;
+                }
+            }
+        }
+        else if (ret == 0){
+            throw std::runtime_error("Client send timeout\n");
+        }
+        else if (ret < 0){
+            throw std::runtime_error(std::string("Client send poll error, errno ") + std::to_string(GET_SOCKET_ERRNO()));
+        }
+    }
+
+    FILE *form = fopen("jsonrpc.html", "rb");
+    if (!form){
+        std::printf("Can't open jsonrpc.html\n");
+        return;
+    }
+
+    sent = 0;
+    while (sent < JSON_HTML_SIZE)
+    {
+        ret = POLL(client.get(), 1, WAIT_TIMEOUT_MS);
+
+        if (ret == 1){
+            if (client->revents & POLLHUP){
+                throw std::runtime_error("Client closed connection\n");
+            }
+            if (client->revents & POLLOUT)
+            {
+            #ifdef _WIN32
+            /* TODO: add windows sendfile alternative */
+            #else
+                ret = sendfile(client->fd, fileno(form), nullptr, JSON_HTML_SIZE - sent);
+            #endif
+                if (auto err = GET_SOCKET_ERRNO(); ret < 0 && err != EAGAIN){
+                    throw std::runtime_error(std::string("Send failed, errno ") + std::to_string(err));
+                }
+                else if (ret == 0){
+                    throw std::runtime_error("Send timed out, closing connection\n");
+                }
+                else{
+                    sent += ret;
+                }
+            }
+            else if (ret == 0){
+            throw std::runtime_error("Client send timeout\n");
+            }
+            else if (ret < 0){
+                throw std::runtime_error(std::string("Client send poll error, errno ") + std::to_string(GET_SOCKET_ERRNO()));
+            }
+        }
+    }
 }
 
 namespace{

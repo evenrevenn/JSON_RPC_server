@@ -3,3 +3,4 @@ task.txt
 .vscode/*
 install/*
 tests/responce.bin
+config.h

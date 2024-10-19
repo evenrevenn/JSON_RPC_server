@@ -26,9 +26,9 @@ def try_json(host_addr, filename : str, f):
     
 
 with open('responce.bin', 'wb') as f:
-    try_json(('192.168.1.108', 12345), 'POST_request_addProperty.txt', f)
-    try_json(('192.168.1.108', 12345), 'POST_request_listProperties.txt', f)
-    try_json(('192.168.1.108', 12345), 'POST_request_deleteProperty.txt', f)
-    try_json(('192.168.1.108', 12345), 'POST_request_listProperties.txt', f)
+    # try_json(('192.168.1.108', 12345), 'POST_request_addProperty.txt', f)
+    # try_json(('192.168.1.108', 12345), 'POST_request_listProperties.txt', f)
+    # try_json(('192.168.1.108', 12345), 'POST_request_deleteProperty.txt', f)
+    # try_json(('192.168.1.108', 12345), 'POST_request_listProperties.txt', f)
 
-    try_json(('192.168.1.108', 12346), 'GET_html_request.txt', f)
+    try_json(('192.168.1.108', 12345), 'GET_html_request.txt', f)

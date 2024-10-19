@@ -1,0 +1,6 @@
+#ifndef CMAKE_CONFIG
+#define CMAKE_CONFIG
+
+#cmakedefine JSON_HTML_SIZE @JSON_HTML_SIZE@
+
+#endif

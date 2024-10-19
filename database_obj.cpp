@@ -1,7 +1,7 @@
 #include "database_obj.h"
 #include <QMetaType>
 #include <QVariant>
-#include <QEvent>
+#include <QTimer>
 #include <semaphore>
 
 using Ret_t = JsonRPCServer::JsonRPCRet_t;
@@ -59,7 +59,7 @@ Q_INVOKABLE Ret_t DatabaseObj::deleteProperty(Params_t params)
 
 Q_INVOKABLE Ret_t DatabaseObj::listProperties(Params_t params)
 {
-    const QString format("Property <%1>, type: <%2>");
+    const QString format("{Property <%1>, type: <%2>} ");
     QString ret = "";
 
     auto names = dynamicPropertyNames();
@@ -68,6 +68,36 @@ Q_INVOKABLE Ret_t DatabaseObj::listProperties(Params_t params)
     }
 
     return Ret_t(ret, NoError);
+}
+
+Q_INVOKABLE Ret_t DatabaseObj::setPropertyAttr(Params_t params)
+{
+    std::string property = "";
+    if (!extractParamStr(std::forward<std::remove_reference_t<Params_t>>(params), "property", property)){
+        return Ret_t{"", InvalidParams};
+    }
+    std::string attribute = "";
+    if (!extractParamStr(std::forward<std::remove_reference_t<Params_t>>(params), "attribute", attribute)){
+        return Ret_t{"", InvalidParams};
+    }
+    
+    auto data_iter = params.constFind("data");
+    if (data_iter == params.cend()){
+        return Ret_t{"", InvalidParams};
+    }
+    const QVariant &data = *data_iter;
+
+    QVariant prop_v = this->property(property.c_str());
+    QMetaType prop_t = prop_v.metaType();
+    QObject *prop_copy = static_cast<QObject *>(prop_t.create(prop_v.data()));
+
+    QVariant prop_copy_v = prop_copy->property(attribute.c_str());
+    prop_copy_v = data;
+    prop_copy->setProperty(attribute.c_str(), prop_copy_v);
+    
+    this->setProperty(property.c_str(), QVariant(prop_t, prop_copy));
+
+    return Ret_t(QString("Attribute %1 set to %2").arg(attribute.c_str(), data.toString()), NoError);
 }
 
 Q_INVOKABLE Ret_t DatabaseObj::addChild(Params_t params)
@@ -143,7 +173,7 @@ refresh_semaphore_(0)
         exit(EXIT_FAILURE);
     }
 
-    refresh_thread_ = std::jthread(&DatabaseObj::refreshLoop, this);
+    startRefreshLoop();
 }
 
 DatabaseObj::PingPongClientAccess DatabaseObj::getHTMLFile()
@@ -157,15 +187,22 @@ DatabaseObj::PingPongClientAccess DatabaseObj::getHTMLFile()
     return PingPongClientAccess(page.semaphores, f, len);
 }
 
-void DatabaseObj::refreshLoop()
+void DatabaseObj::startRefreshLoop()
 {
-    std::cout << "Starting refreshHtml loop" << std::endl;
-    while (true)
-    {
-        refresh_semaphore_.acquire();
-        refreshHtml();
-    }
-    std::cout << "Stopping refreshHtml loop" << std::endl;
+    QTimer *loop_timer = new QTimer();
+    loop_timer->setSingleShot(false);
+    loop_timer->setInterval(0);
+    loop_timer->start();
+
+    refresh_thread_.start();
+    loop_timer->moveToThread(&refresh_thread_);
+    connect(&refresh_thread_, &QThread::finished, loop_timer, &QObject::deleteLater);
+
+    connect(loop_timer, &QTimer::timeout, this, [&](){
+        if (refresh_semaphore_.try_acquire()){
+            refreshHtml();
+        }
+    }, Qt::BlockingQueuedConnection);
 }
 
 void DatabaseObj::refreshHtml()
