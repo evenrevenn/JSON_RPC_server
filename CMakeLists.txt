@@ -10,9 +10,9 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 set(CMAKE_AUTOMOC ON)
 
 
-file (SIZE ${CMAKE_SOURCE_DIR}/jsonrpc.html JSON_HTML_SIZE)
+configure_file(jsonrpc.html.in ${CMAKE_BINARY_DIR}/jsonrpc.html @ONLY)
+file (SIZE ${CMAKE_BINARY_DIR}/jsonrpc.html JSON_HTML_SIZE)
 configure_file(config.h.in ${CMAKE_SOURCE_DIR}/config.h @ONLY)
-
 
 qt_add_executable(JsonRPC
 main.cpp
@@ -31,5 +31,5 @@ target_link_libraries(JsonRPC PRIVATE Qt6::Widgets)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install)
 install(TARGETS JsonRPC RUNTIME DESTINATION "bin")
-install(FILES jsonrpc.html DESTINATION "bin")
+install(FILES ${CMAKE_BINARY_DIR}/jsonrpc.html DESTINATION "bin")
 install(DIRECTORY "DatabaseRoot" DESTINATION "bin")

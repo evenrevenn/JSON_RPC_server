@@ -41,10 +41,30 @@ enum StatusCodes{
 };
 
 typedef char const * ReasonPhrase;
-constexpr ReasonPhrase getReasonPhrase(StatusCodes code);
+constexpr ReasonPhrase getReasonPhrase(StatusCodes code)
+{
+    switch(code){
+    case OK:
+        return "OK";
+    case BAD_REQUEST:
+        return "Bad Request";
+    case NOT_FOUND:
+        return "Not Found";
+    case METHOD_NOT_ALLOWED:
+        return "Method Not Allowed";
+    case INTERNAL_SERVER_ERROR:
+        return "Internal Server Error";
+    }
+
+    return "";
+}
 
 typedef char const * Connection;
-constexpr Connection getConnectionText(const bool close);
+constexpr Connection getConnectionText(const bool close)
+{
+    return close ? "close" : "";
+}
+
 }
 
 class HtmlServer : public WebServer
@@ -59,8 +79,13 @@ private:
     template <bool close>
     void processRequestGET(const QStringList &uri, CleanUtils::socket_ptr &&client);
 
+    template <bool close>
+    struct ClientRefT{
+        using type = std::conditional<close, std::add_rvalue_reference<CleanUtils::socket_ptr>::type, std::add_lvalue_reference<CleanUtils::socket_ptr>::type>::type;
+    };
+    
     template <HTTPConstants::StatusCodes code, bool close = true>
-    void sendResponse(CleanUtils::socket_ptr &&client, FILE *f = nullptr, size_t content_len = 0);
+    void sendResponse(ClientRefT<close>::type client, FILE *f = nullptr, size_t content_len = 0);
 
     std::shared_ptr<DatabaseObj> database_;
 
@@ -75,22 +100,22 @@ inline void HtmlServer::processRequestGET(const QStringList &uri, CleanUtils::so
     for (const QString &step : uri){
         resource = resource->findChild<DatabaseObj *>(step, Qt::FindDirectChildrenOnly);
         if (!resource){
-            sendResponse<HTTPConstants::NOT_FOUND, close>(std::forward<CleanUtils::socket_ptr>(client));
+            sendResponse<HTTPConstants::NOT_FOUND, close>(std::forward<typename ClientRefT<close>::type>(client));
             throw(std::runtime_error("Can't find corresponding object"));
         }
     }
 
     auto html = resource->getHTMLFile();
     if (!html){
-        sendResponse<HTTPConstants::NOT_FOUND, close>(std::forward<CleanUtils::socket_ptr>(client));
+        sendResponse<HTTPConstants::NOT_FOUND, close>(std::forward<typename ClientRefT<close>::type>(client));
         throw(std::runtime_error("Can't open corresponding html page"));
     }
 
-    sendResponse<HTTPConstants::OK, close>(std::forward<CleanUtils::socket_ptr>(client), html, html.length());
+    sendResponse<HTTPConstants::OK, close>(std::forward<typename ClientRefT<close>::type>(client), html, html.length());
 }
 
 template <HTTPConstants::StatusCodes code, bool close>
-inline void HtmlServer::sendResponse(CleanUtils::socket_ptr &&client, FILE *f, size_t content_len)
+inline void HtmlServer::sendResponse(ClientRefT<close>::type client, FILE *f, size_t content_len)
 {
     char buf[512] = "";
     ssize_t http_len = 0;

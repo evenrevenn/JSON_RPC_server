@@ -80,16 +80,13 @@ void JsonRPCServer::processRequest(const SOCKET client)
                     auto reg_match_iter = RegularExpressions::http_json_GET.globalMatch(buffer);
                     while (reg_match_iter.hasNext()){
                         reg_match = reg_match_iter.next();
-                        processRequestGET(buffer, std::forward<CleanUtils::socket_ptr>(client_ptr));
-
-                        if (reg_match.captured("http_connection") == "close"){
-                            return;
-                        }
+                        return processRequestGET(buffer, std::move(client_ptr));
                     }
                 }
             }
         }
 
+        client_ptr->events = POLLIN;
         ret = POLL(client_ptr.get(), 1, WAIT_TIMEOUT_MS);
         if (ret == 1){
             if (client_ptr->revents & POLLHUP){
@@ -181,7 +178,11 @@ void JsonRPCServer::processRequestGET(QByteArray &&req_body, CleanUtils::socket_
 {
     char buf[512] = "";
     ssize_t http_len = 0;
-    http_len = std::snprintf(buf, 512, HTTPTemplates::html_get_response_fmt, 200, HTTPConstants::getReasonPhrase(HTTPConstants::OK), 1944, HTTPConstants::getConnectionText(false));
+    http_len = std::snprintf(buf, 512, HTTPTemplates::html_get_response_fmt
+    ,200
+    ,HTTPConstants::getReasonPhrase(HTTPConstants::OK)
+    ,JSON_HTML_SIZE
+    ,HTTPConstants::getConnectionText(true));
 
     client->events = POLLOUT;
     ssize_t sent = 0;
@@ -248,7 +249,7 @@ void JsonRPCServer::processRequestGET(QByteArray &&req_body, CleanUtils::socket_
                 }
             }
             else if (ret == 0){
-            throw std::runtime_error("Client send timeout\n");
+                throw std::runtime_error("Client send timeout\n");
             }
             else if (ret < 0){
                 throw std::runtime_error(std::string("Client send poll error, errno ") + std::to_string(GET_SOCKET_ERRNO()));

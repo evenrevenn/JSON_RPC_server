@@ -6,7 +6,7 @@
     <title>POST Request Form</title>
 </head>
 <body>
-    <h1>TEST</h1>
+    <h1>Primitive form to send requests</h1>
     <form id="dataForm">
         <label for="field1">Method:</label>
         <input type="text" id="field1" name="field1" required>
@@ -24,7 +24,7 @@
             const method = document.getElementById('field1').value;
             const params = document.getElementById('field2').value;
             const id = document.getElementById('field3').value;
-
+            
             // Construct the request body
             const requestData = {
                 jsonrpc: "2.0",
@@ -34,15 +34,17 @@
             };
 
             // Send the POST request
-            fetch(window.location.href, {
+            fetch('/', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Content-Type': 'application/json-rpc 2.0',
+                    'Accept': 'application/json-rpc 2.0'
                 },
                 body: JSON.stringify(requestData) // Convert object to JSON string
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log(response);
+            })
             .then(data => {
                 console.log('Success:', data);
             })
