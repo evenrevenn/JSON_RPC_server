@@ -23,7 +23,7 @@
         function submitData() {
             const method = document.getElementById('field1').value;
             const params = document.getElementById('field2').value;
-            const id = document.getElementById('field3').value;
+            const id = parseInt(document.getElementById('field3').value);
             
             // Construct the request body
             const requestData = {
