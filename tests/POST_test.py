@@ -30,5 +30,7 @@ with open('responce.bin', 'wb') as f:
     # try_json(('192.168.1.108', 12345), 'POST_request_listProperties.txt', f)
     # try_json(('192.168.1.108', 12345), 'POST_request_deleteProperty.txt', f)
     # try_json(('192.168.1.108', 12345), 'POST_request_listProperties.txt', f)
-
-    try_json(('192.168.1.108', 12345), 'GET_html_request.txt', f)
+    # try_json(('192.168.1.108', 12345), 'GET_html_request.txt', f)
+    try_json(('192.168.1.108', 12345), 'POST_request_addLink.txt', f)
+    try_json(('192.168.1.108', 12345), 'POST_request_setLinkURL.txt', f)
+    try_json(('192.168.1.108', 12345), 'POST_request_setLinkText.txt', f)

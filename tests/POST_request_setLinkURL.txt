@@ -1,0 +1,8 @@
+POST / HTTP/1.1
+HOST: Test
+Content-Type: application/json-rpc 2.0
+Content-Length: 137
+Accept: application/json-rpc 2.0
+Connection: close
+
+{"jsonrpc": "2.0", "method": "setPropertyAttr", "params": {"property":"test_link", "attribute":"url", "data":"www.nowhere.com"}, "id": 1}
