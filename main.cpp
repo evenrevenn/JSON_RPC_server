@@ -14,9 +14,9 @@ int main(int argc, char *argv[])
     UserMetaTypes::registerTypes();
     auto database = std::make_shared<DatabaseObj>("DatabaseRoot");
 
-    database->addProperty(QVariantMap{{"type", "HyperLink"}, {"name", "Link"}});
-    database->setPropertyAttr(QVariantMap{{"property", "Link"}, {"attribute", "url"}, {"data", "http://www.some.ru"}});
-    database->setPropertyAttr(QVariantMap{{"property", "Link"}, {"attribute", "text"}, {"data", "hyper"}});
+    // database->addProperty(QVariantMap{{"type", "HyperLink"}, {"name", "Link"}});
+    // database->setPropertyAttr(QVariantMap{{"property", "Link"}, {"attribute", "url"}, {"data", "http://www.some.ru"}});
+    // database->setPropertyAttr(QVariantMap{{"property", "Link"}, {"attribute", "text"}, {"data", "hyper"}});
     
     ServersWrapper &wrapper = ServersWrapper::getInstance();
     
