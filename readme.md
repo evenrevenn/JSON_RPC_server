@@ -5,11 +5,11 @@ This is a basic implementation of JSON-RPC over HTTP Server; written on C++20, b
 If you are looking for implementation examples, or for a start point of your implementation, you may find it interesting
 ## How does it work?
 ### JSON-RPC Protocol
-JSON-RPC 2.0 is implemented according to [this] specification(https://ftp.jsonrpc.org/specification), and transported via TCP over HTTP according to [this](https://www.jsonrpc.org/historical/json-rpc-over-http.html).
+JSON-RPC 2.0 is implemented according to [this](https://ftp.jsonrpc.org/specification) specification, and transported via TCP over HTTP according to [this](https://www.jsonrpc.org/historical/json-rpc-over-http.html).
 ### Methods invokation
 For details on supported methods go to section Methods(#TODO:add methods section). Invokation is performed by Qt's MetaObject system at runtime, using QProperty and QMetaType
 ### TCP layer
-TCP server core made using socket() API. Together with multithreading it's designed to provide good performance with as least blocking as possible. Limits of active clients is implementation defined. port ```12345``` is used for the server
+TCP server core made using socket() API. Together with multithreading it's designed to provide good performance with as least blocking as possible. Limits of active clients is implementation defined. Port ```12345``` is used for the server by default
 ### GUI availability
 For the purpose of easier and quick user-friendly approach to testing and using JSON-RPC there is a simple web-page with a form, in which you can type in Method, Parameters and Id fields of JSON-RPC request and send corresponding ```POST``` request with a submit button. This page comes as a response to ```GET``` method, so after starting Server application you can open it with any browser
 ## Application example
