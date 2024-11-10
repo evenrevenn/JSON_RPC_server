@@ -4,3 +4,4 @@ task.txt
 install/*
 tests/responce.bin
 config.h
+doxygen.conf
