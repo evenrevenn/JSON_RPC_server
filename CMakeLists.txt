@@ -43,9 +43,19 @@ install(DIRECTORY "DatabaseRoot" DESTINATION "bin")
 
 
 ## Documentation
-set(DOCS_PATH ${CMAKE_SOURCE_DIR}/docs)
+find_package(Doxygen)
 
-get_property(DOXYGEN_DIRS DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY SUBDIRECTORIES)
-list(APPEND DOXYGEN_DIRS ${CMAKE_SOURCE_DIR})
+if (DOXYGEN_FOUND)
+    set(DOCS_PATH ${CMAKE_SOURCE_DIR}/docs)
 
-configure_file(doxygen.conf.in ${CMAKE_BINARY_DIR}/doxygen.conf @ONLY)
+    get_property(DOXYGEN_DIRS DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY SUBDIRECTORIES)
+    list(APPEND DOXYGEN_DIRS ${CMAKE_SOURCE_DIR})
+
+    configure_file(doxygen.conf.in ${CMAKE_BINARY_DIR}/doxygen.conf @ONLY)
+
+    add_custom_target(docs_generate ALL
+                    COMMAND ${DOXYGEN_EXECUTABLE} doxygen.conf
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                    COMMENT "Generating documentation"
+                    VERBATIM )
+endif (DOXYGEN_FOUND)
