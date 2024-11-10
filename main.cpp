@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     JsonRPCServer json_rpc_server(12345, database.get());
     HtmlServer html_server(12346, database);
     
-    wrapper.addServer(json_rpc_server, html_server);
+    wrapper.addServers(json_rpc_server, html_server);
 
     wrapper.startListenLoop();
 

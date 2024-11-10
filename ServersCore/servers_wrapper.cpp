@@ -10,6 +10,15 @@ void ServersWrapper::startListenLoop()
     }
 }
 
+/**
+ * @details Listening loop, that perform polling on prior added servers socket fds.
+ * When POLLIN flag gets detected on any fd, new client connection gets accepted and
+ * loop resolves the server object reference, using clients_map_. Then client fd gets
+ * passed to resolved server's client fds array, so it could be processed by it's own
+ * listening loop
+ * @throws std::runtime_error if poll returns error
+ * @throws std::runtime_error if can't resolve server object from fd
+ */
 void ServersWrapper::serversListeningLoop(std::stop_token stopper)
 {
     std::printf("Servers loop started\n");
@@ -20,8 +29,7 @@ void ServersWrapper::serversListeningLoop(std::stop_token stopper)
         std::lock_guard lock(wrapper.servers_lock_);
         int ret = POLL(wrapper.servers_.data(), wrapper.servers_.size(), 100);
         if (ret < 0){
-            std::cout << "Server poll error" << std::endl;
-            exit(EXIT_FAILURE);
+            throw std::runtime_error("Server poll error, errno %d\n", GET_SOCKET_ERRNO());
         }
         else if(ret == 0){
             continue;
@@ -40,8 +48,7 @@ void ServersWrapper::serversListeningLoop(std::stop_token stopper)
                     , [server_sock](decltype(clients_map_)::value_type &elem){return server_sock == elem.first.get().server_socket_;});
                     
                     if (map_iter == wrapper.clients_map_.end()){
-                        std::cout << "Couldn't resolve server object from server fd" << std::endl;
-                        exit(EXIT_FAILURE);
+                        throw std::runtime_error("Couldn't resolve server object from server fd");
                     }
                     POLL_FD client_fd{.fd = client, .events = POLLIN};
 
