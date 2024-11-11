@@ -97,6 +97,8 @@ Q_INVOKABLE Ret_t DatabaseObj::setPropertyAttr(Params_t params)
     
     this->setProperty(property.c_str(), QVariant(prop_t, prop_copy));
 
+    notifyRefresh();
+
     return Ret_t(QString("Attribute %1 set to %2").arg(attribute.c_str(), data.toString()), NoError);
 }
 
@@ -192,17 +194,19 @@ void DatabaseObj::startRefreshLoop()
     QTimer *loop_timer = new QTimer();
     loop_timer->setSingleShot(false);
     loop_timer->setInterval(0);
-    loop_timer->start();
-
-    refresh_thread_.start();
     loop_timer->moveToThread(&refresh_thread_);
+
+    // loop_timer->start();
+    connect(&refresh_thread_, &QThread::started, loop_timer, static_cast<void (QTimer::*)()>(&QTimer::start));
     connect(&refresh_thread_, &QThread::finished, loop_timer, &QObject::deleteLater);
 
     connect(loop_timer, &QTimer::timeout, this, [&](){
         if (refresh_semaphore_.try_acquire()){
             refreshHtml();
         }
-    }, Qt::BlockingQueuedConnection);
+    }, Qt::DirectConnection);
+
+    refresh_thread_.start();
 }
 
 void DatabaseObj::refreshHtml()
