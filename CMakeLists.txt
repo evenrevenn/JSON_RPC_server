@@ -51,10 +51,11 @@ if (DOXYGEN_FOUND)
     get_property(DOXYGEN_DIRS DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY SUBDIRECTORIES)
     list(APPEND DOXYGEN_DIRS ${CMAKE_SOURCE_DIR})
 
-    configure_file(doxygen.conf.in ${CMAKE_BINARY_DIR}/doxygen.conf @ONLY)
+    set(DOXYGEN_CONF_PATH ${CMAKE_BINARY_DIR}/doxygen.conf)
+    configure_file(doxygen.conf.in ${DOXYGEN_CONF_PATH} @ONLY)
 
     add_custom_target(docs_generate ALL
-                    COMMAND ${DOXYGEN_EXECUTABLE} doxygen.conf
+                    COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_CONF_PATH}
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                     COMMENT "Generating documentation"
                     VERBATIM )
