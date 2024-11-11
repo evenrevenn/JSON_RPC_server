@@ -97,7 +97,7 @@ inline void ServersWrapper::addOneServer(Server_t &server)
 
     servers_.emplace_back(POLL_FD{.fd = server_sock, .events = POLLIN});
     if(listen(server_sock, Server_t::MAX_CLIENTS)){
-        throw std::runtime_error("Can't listen on socket, errno %d\n", GET_SOCKET_ERRNO());
+        throw std::runtime_error("Can't listen on socket, errno" + std::to_string(GET_SOCKET_ERRNO()));
     }
 
     auto new_vec = clients_map_.try_emplace(server);

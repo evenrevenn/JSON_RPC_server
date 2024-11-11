@@ -29,7 +29,7 @@ void ServersWrapper::serversListeningLoop(std::stop_token stopper)
         std::lock_guard lock(wrapper.servers_lock_);
         int ret = POLL(wrapper.servers_.data(), wrapper.servers_.size(), 100);
         if (ret < 0){
-            throw std::runtime_error("Server poll error, errno %d\n", GET_SOCKET_ERRNO());
+            throw std::runtime_error(std::string("Server poll error, errno") + std::to_string(GET_SOCKET_ERRNO()));
         }
         else if(ret == 0){
             continue;
